@@ -1,0 +1,39 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "LeaveFlow - Employee Leave Management System Backend (Node.ts/Express/MongoDB)",
+  "main": "server.ts",
+  "scripts": {
+    "dev": "nodemon --exec 'node --loader ts-node/esm' server.ts",
+    "build": "tsc",
+    "start": "node server.ts"
+  },
+  "keywords": [
+    "leave-management",
+    "mern",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptts": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "tsonwebtoken": "^9.0.3",
+    "mongodb": "^7.2.0",
+    "mongoose": "^8.24.0"
+  },
+  "devDependencies": {
+    "@types/bcryptts": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/tsonwebtoken": "^9.0.10",
+    "@types/node": "^25.9.1",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}
