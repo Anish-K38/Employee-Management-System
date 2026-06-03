@@ -1,7 +1,22 @@
-import express from 'express';
+// Force Node.js to use Google DNS directly — bypasses the system resolver
+// which refuses SRV record lookups required by mongodb+srv:// URIs.
+import dns from "dns";
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
-const app = express();
+import dotenv from "dotenv";
+dotenv.config();
 
-app.listen(5000, () => {
-    console.log("Server is running on port 5000");
-});
+import app from "./app.js";
+import { connectDB } from "./config/db.js";
+
+const PORT = process.env.PORT || 5000;
+
+const startServer = async () => {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`Server running on ${PORT}`);
+  });
+};
+
+startServer();

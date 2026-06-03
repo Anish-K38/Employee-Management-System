@@ -2,12 +2,12 @@
   "name": "backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "LeaveFlow - Employee Leave Management System Backend (Node.ts/Express/MongoDB)",
+  "description": "LeaveFlow - Employee Leave Management System Backend (Node.js/Express/MongoDB)",
   "main": "server.ts",
   "scripts": {
-    "dev": "nodemon --exec 'node --loader ts-node/esm' server.ts",
+    "dev": "nodemon --exec tsx server.ts",
     "build": "tsc",
-    "start": "node server.ts"
+    "start": "tsx server.ts"
   },
   "keywords": [
     "leave-management",
@@ -18,22 +18,25 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bcryptts": "^2.4.3",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
-    "tsonwebtoken": "^9.0.3",
+    "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.2.0",
-    "mongoose": "^8.24.0"
+    "mongoose": "^8.24.0",
+    "validator": "^13.15.35"
   },
   "devDependencies": {
-    "@types/bcryptts": "^2.4.6",
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/tsonwebtoken": "^9.0.10",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.9.1",
+    "@types/validator": "^13.15.10",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
     "typescript": "^6.0.3"
   }
 }
