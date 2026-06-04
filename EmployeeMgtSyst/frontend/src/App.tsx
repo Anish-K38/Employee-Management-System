@@ -1,122 +1,84 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import AuthPage from "./pages/AuthPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
+import { getStoredToken, getStoredUser } from "./hooks/useAuth";
 
-function App() {
-  const [count, setCount] = useState(0)
+import { DashboardLayout } from "./layouts/DashboardLayout";
+import SuperAdminDashboard from "./pages/dashboards/SuperAdminDashboard";
+import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import SupervisorDashboard from "./pages/dashboards/SupervisorDashboard";
+import EmployeeDashboard from "./pages/dashboards/EmployeeDashboard";
+import ApplyLeave from "./pages/dashboards/ApplyLeave";
+import MyRequests from "./pages/dashboards/MyRequests";
+import SupervisorTeam from "./pages/dashboards/SupervisorTeam";
+import LeaveApprovals from "./pages/dashboards/LeaveApprovals";
+import UserManagement from "./pages/management/UserManagement";
+import DepartmentManagement from "./pages/management/DepartmentManagement";
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+// ─────────────────────────────────────────────────────────────
+// Guard: redirect to /login if no token is present
+// ─────────────────────────────────────────────────────────────
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const token = getStoredToken();
+  if (!token) return <Navigate to="/login" replace />;
+  return <>{children}</>;
 }
 
-export default App
+// ─────────────────────────────────────────────────────────────
+// Guard: redirect away from login if already authenticated
+// ─────────────────────────────────────────────────────────────
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const token = getStoredToken();
+  const user = getStoredUser();
+  if (token && user) {
+    const roleMap: Record<string, string> = {
+      employee: "/employee/dashboard",
+      supervisor: "/supervisor/dashboard",
+      admin: "/admin/dashboard",
+      super_admin: "/super-admin/dashboard",
+    };
+    return <Navigate to={roleMap[user.role] ?? "/employee/dashboard"} replace />;
+  }
+  return <>{children}</>;
+}
+
+
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Root — redirect to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* Public auth routes */}
+        <Route path="/login" element={<PublicRoute><AuthPage /></PublicRoute>} />
+
+        {/* First-login password change (protected) */}
+        <Route path="/change-password" element={<PrivateRoute><ChangePasswordPage /></PrivateRoute>} />
+
+        {/* Role-specific dashboards (protected) */}
+        <Route path="/employee/dashboard" element={<PrivateRoute><DashboardLayout><EmployeeDashboard /></DashboardLayout></PrivateRoute>} />
+        <Route path="/employee/apply" element={<PrivateRoute><DashboardLayout><ApplyLeave /></DashboardLayout></PrivateRoute>} />
+        <Route path="/employee/requests" element={<PrivateRoute><DashboardLayout><MyRequests /></DashboardLayout></PrivateRoute>} />
+        
+        <Route path="/supervisor/dashboard" element={<PrivateRoute><DashboardLayout><SupervisorDashboard /></DashboardLayout></PrivateRoute>} />
+        <Route path="/supervisor/team" element={<PrivateRoute><DashboardLayout><SupervisorTeam /></DashboardLayout></PrivateRoute>} />
+        <Route path="/supervisor/leaves" element={<PrivateRoute><DashboardLayout><LeaveApprovals /></DashboardLayout></PrivateRoute>} />
+        
+        <Route path="/admin/dashboard" element={<PrivateRoute><DashboardLayout><AdminDashboard /></DashboardLayout></PrivateRoute>} />
+        <Route path="/admin/users" element={<PrivateRoute><DashboardLayout><UserManagement /></DashboardLayout></PrivateRoute>} />
+        <Route path="/admin/approvals" element={<PrivateRoute><DashboardLayout><LeaveApprovals /></DashboardLayout></PrivateRoute>} />
+        
+        <Route path="/super-admin/dashboard" element={<PrivateRoute><DashboardLayout><SuperAdminDashboard /></DashboardLayout></PrivateRoute>} />
+        <Route path="/super-admin/users" element={<PrivateRoute><DashboardLayout><UserManagement /></DashboardLayout></PrivateRoute>} />
+        <Route path="/super-admin/departments" element={<PrivateRoute><DashboardLayout><DepartmentManagement /></DashboardLayout></PrivateRoute>} />
+
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;

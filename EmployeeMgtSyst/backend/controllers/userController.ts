@@ -18,8 +18,12 @@ const buildScopeFilter = async (
     if (!admin?.departmentId) return null; // admin has no dept → block
     return { departmentId: admin.departmentId };
   }
+  
+  if (actorRole === "supervisor") {
+    return { managerId: actorId };
+  }
 
-  return null; // supervisor / employee → not allowed to list
+  return null; // employee → not allowed to list
 };
 
 // ─────────────────────────────────────────────
@@ -51,12 +55,22 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 // @route   POST /api/users
 // @access  super_admin | admin  (authorizeCreation middleware validates role matrix)
 // ─────────────────────────────────────────────
+// Helper: generate a random alphanumeric temporary password
+const generateTempPassword = (length = 10): string => {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, role, departmentId, managerId } = req.body;
+    const { name, email, role, departmentId, managerId } = req.body;
 
-    if (!name || !email || !password) {
-      res.status(400).json({ message: "name, email and password are required" });
+    if (!name || !email) {
+      res.status(400).json({ message: "name and email are required" });
       return;
     }
 
@@ -66,8 +80,11 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // Auto-generate a temporary password — admin shares it with the new user.
+    // User is forced to change it on first login (mustChangePassword = true).
+    const tempPassword = generateTempPassword();
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
     const user = await User.create({
       name,
@@ -77,6 +94,8 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       departmentId: departmentId || null,
       managerId: managerId || null,
       createdBy: req.user!.id,
+      mustChangePassword: true,   // forces password change on first login
+      isActive: true,
     });
 
     const populated = await User.findById(user._id)
@@ -85,7 +104,11 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       .populate("managerId", "name email role")
       .populate("createdBy", "name email role");
 
-    res.status(201).json(populated);
+    // Return the temp password once — the admin must share it with the new user.
+    res.status(201).json({
+      user: populated,
+      temporaryPassword: tempPassword,
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message || "Server Error" });
   }

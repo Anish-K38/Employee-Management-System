@@ -2,8 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import type { AuthPayload } from "../types/express.js";
 
-// @desc  Reads Bearer token from Authorization header, verifies it,
-//        and attaches the decoded payload to req.user before calling next().
+
 export const protect = (
   req: Request,
   res: Response,

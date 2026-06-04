@@ -7,6 +7,7 @@ export interface ILeave extends mongoose.Document {
   endDate: Date;
   reason: string;
   status: "pending" | "approved" | "rejected" | "cancelled";
+  rejectionReason?: string;
 
   // Stage 1 — Supervisor
   supervisorApproval: "pending" | "approved" | "rejected";
@@ -53,6 +54,12 @@ const leaveSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected", "cancelled"],
       default: "pending",
+    },
+
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: null,
     },
 
     // ── Stage 1: Supervisor ──────────────────────

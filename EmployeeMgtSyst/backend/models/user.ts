@@ -8,6 +8,20 @@ export interface IUser extends mongoose.Document {
   departmentId?: mongoose.Types.ObjectId;
   managerId?: mongoose.Types.ObjectId;
   createdBy?: mongoose.Types.ObjectId;
+
+  // Onboarding / security flags
+  mustChangePassword: boolean;      // true when created by an admin; cleared on first password change
+  passwordChangedAt?: Date;         // timestamp of last password change
+  isActive: boolean;                // soft-disable without deleting the account
+
+  // Leave & HR tracking
+  leaveBalance: {
+    annual: number;
+    sick: number;
+    casual: number;
+    maternity: number;
+  };
+  joiningDate: Date;
 }
 
 const userSchema = new mongoose.Schema(
@@ -53,6 +67,35 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+
+    // ── Onboarding & security flags ──────────────────────────
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
+
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    // ── Leave & HR tracking ──────────────────────────────
+    leaveBalance: {
+      annual: { type: Number, default: 20 },
+      sick: { type: Number, default: 10 },
+      casual: { type: Number, default: 5 },
+      maternity: { type: Number, default: 0 },
+    },
+
+    joiningDate: {
+      type: Date,
+      default: Date.now,
     },
   },
   {

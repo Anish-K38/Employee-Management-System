@@ -22,10 +22,10 @@ router.get("/me", protect, getMe);
 router.post("/", protect, authorizeCreation, createUser);
 
 // ── User listing & detail ────────────────────
-// GET /api/users          → super_admin sees all; admin sees own dept
+// GET /api/users          → super_admin sees all; admin sees own dept; supervisor sees own team
 // GET /api/users/:id      → same scoping
-router.get("/", protect, authorize("admin"), getAllUsers);
-router.get("/:id", protect, authorize("admin"), getUserById);
+router.get("/", protect, authorize("supervisor", "admin"), getAllUsers);
+router.get("/:id", protect, authorize("supervisor", "admin"), getUserById);
 
 // ── User updates & deletion ──────────────────
 // PUT    /api/users/:id

@@ -8,11 +8,13 @@ dotenv.config();
 
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
+import { bootstrapSuperAdmin } from "./config/bootstrap.js";
 
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await connectDB();
+  await bootstrapSuperAdmin(); // Create default super_admin on first run
 
   app.listen(PORT, () => {
     console.log(`Server running on ${PORT}`);
