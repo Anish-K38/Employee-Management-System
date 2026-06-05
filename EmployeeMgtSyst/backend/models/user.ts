@@ -6,7 +6,7 @@ export interface IUser extends mongoose.Document {
   password: string;
   role: "employee" | "supervisor" | "admin" | "super_admin";
   departmentId?: mongoose.Types.ObjectId;
-  managerId?: mongoose.Types.ObjectId;
+  supervisorId?: mongoose.Types.ObjectId;
   createdBy?: mongoose.Types.ObjectId;
 
   // Onboarding / security flags
@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
-    managerId: {
+    supervisorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,

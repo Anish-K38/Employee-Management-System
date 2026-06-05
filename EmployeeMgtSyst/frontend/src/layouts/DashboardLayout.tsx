@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { ProfileModal } from "../components/ProfileModal";
+import { useState } from "react";
 import {
   LayoutDashboard,
   CalendarDays,
   Users,
   Settings,
   LogOut,
-  FileText,
-  User as UserIcon,
+  FileText
 } from "lucide-react";
 
 interface SidebarItem {
@@ -21,6 +22,7 @@ interface SidebarItem {
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   if (!user) return null;
 
@@ -32,7 +34,6 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       { name: "Dashboard", path: "/super-admin/dashboard", icon: <LayoutDashboard size={20} /> },
       { name: "Departments", path: "/super-admin/departments", icon: <Settings size={20} /> },
       { name: "User Management", path: "/super-admin/users", icon: <Users size={20} /> },
-      { name: "All Employees", path: "/super-admin/employees", icon: <Users size={20} /> },
       { name: "Leave Requests", path: "/super-admin/leaves", icon: <CalendarDays size={20} /> },
     ];
   } else if (user.role === "admin") {
@@ -40,12 +41,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       { name: "Dashboard", path: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
       { name: "User Management", path: "/admin/users", icon: <Users size={20} /> },
       { name: "Pending Approvals", path: "/admin/approvals", icon: <CalendarDays size={20} /> },
+      { name: "Apply for Leave", path: "/admin/apply", icon: <FileText size={20} /> },
+      { name: "My Requests", path: "/admin/requests", icon: <CalendarDays size={20} /> },
     ];
   } else if (user.role === "supervisor") {
     navigation = [
       { name: "Dashboard", path: "/supervisor/dashboard", icon: <LayoutDashboard size={20} /> },
       { name: "My Team", path: "/supervisor/team", icon: <Users size={20} /> },
       { name: "Team Leave Requests", path: "/supervisor/leaves", icon: <CalendarDays size={20} /> },
+      { name: "Apply for Leave", path: "/supervisor/apply", icon: <FileText size={20} /> },
+      { name: "My Requests", path: "/supervisor/requests", icon: <CalendarDays size={20} /> },
     ];
   } else {
     navigation = [
@@ -110,7 +115,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="p-4 border-t" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl" style={{ background: "color-mix(in srgb, var(--primary) 5%, transparent)" }}>
+          <div 
+            className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors" 
+            style={{ background: "color-mix(in srgb, var(--primary) 5%, transparent)" }}
+            onClick={() => setIsProfileModalOpen(true)}
+            title="View Profile"
+          >
             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--primary)] to-[var(--deepblue)] flex items-center justify-center text-white font-bold text-sm">
               {user.name.charAt(0).toUpperCase()}
             </div>
@@ -143,6 +153,11 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+
+      <ProfileModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+      />
     </div>
   );
 }

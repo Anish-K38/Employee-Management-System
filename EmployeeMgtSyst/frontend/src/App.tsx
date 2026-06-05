@@ -65,14 +65,20 @@ function App() {
         <Route path="/supervisor/dashboard" element={<PrivateRoute><DashboardLayout><SupervisorDashboard /></DashboardLayout></PrivateRoute>} />
         <Route path="/supervisor/team" element={<PrivateRoute><DashboardLayout><SupervisorTeam /></DashboardLayout></PrivateRoute>} />
         <Route path="/supervisor/leaves" element={<PrivateRoute><DashboardLayout><LeaveApprovals /></DashboardLayout></PrivateRoute>} />
+        <Route path="/supervisor/apply" element={<PrivateRoute><DashboardLayout><ApplyLeave /></DashboardLayout></PrivateRoute>} />
+        <Route path="/supervisor/requests" element={<PrivateRoute><DashboardLayout><MyRequests /></DashboardLayout></PrivateRoute>} />
         
         <Route path="/admin/dashboard" element={<PrivateRoute><DashboardLayout><AdminDashboard /></DashboardLayout></PrivateRoute>} />
         <Route path="/admin/users" element={<PrivateRoute><DashboardLayout><UserManagement /></DashboardLayout></PrivateRoute>} />
         <Route path="/admin/approvals" element={<PrivateRoute><DashboardLayout><LeaveApprovals /></DashboardLayout></PrivateRoute>} />
+        <Route path="/admin/apply" element={<PrivateRoute><DashboardLayout><ApplyLeave /></DashboardLayout></PrivateRoute>} />
+        <Route path="/admin/requests" element={<PrivateRoute><DashboardLayout><MyRequests /></DashboardLayout></PrivateRoute>} />
         
         <Route path="/super-admin/dashboard" element={<PrivateRoute><DashboardLayout><SuperAdminDashboard /></DashboardLayout></PrivateRoute>} />
         <Route path="/super-admin/users" element={<PrivateRoute><DashboardLayout><UserManagement /></DashboardLayout></PrivateRoute>} />
+        <Route path="/super-admin/employees" element={<PrivateRoute><DashboardLayout><UserManagement /></DashboardLayout></PrivateRoute>} />
         <Route path="/super-admin/departments" element={<PrivateRoute><DashboardLayout><DepartmentManagement /></DashboardLayout></PrivateRoute>} />
+        <Route path="/super-admin/leaves" element={<PrivateRoute><DashboardLayout><LeaveApprovals /></DashboardLayout></PrivateRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -20,7 +20,7 @@ const buildScopeFilter = async (
   }
   
   if (actorRole === "supervisor") {
-    return { managerId: actorId };
+    return { supervisorId: actorId };
   }
 
   return null; // employee → not allowed to list
@@ -36,7 +36,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     const user = await User.findById(req.user!.id)
       .select("-password")
       .populate("departmentId", "name description")
-      .populate("managerId", "name email role")
+      .populate("supervisorId", "name email role")
       .populate("createdBy", "name email role");
 
     if (!user) {
@@ -67,7 +67,7 @@ const generateTempPassword = (length = 10): string => {
 
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, role, departmentId, managerId } = req.body;
+    const { name, email, role, departmentId, supervisorId } = req.body;
 
     if (!name || !email) {
       res.status(400).json({ message: "name and email are required" });
@@ -92,7 +92,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       password: hashedPassword,
       role: role || "employee",
       departmentId: departmentId || null,
-      managerId: managerId || null,
+      supervisorId: supervisorId || null,
       createdBy: req.user!.id,
       mustChangePassword: true,   // forces password change on first login
       isActive: true,
@@ -101,7 +101,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     const populated = await User.findById(user._id)
       .select("-password")
       .populate("departmentId", "name description")
-      .populate("managerId", "name email role")
+      .populate("supervisorId", "name email role")
       .populate("createdBy", "name email role");
 
     // Return the temp password once — the admin must share it with the new user.
@@ -131,11 +131,47 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
     const users = await User.find(filter)
       .select("-password")
       .populate("departmentId", "name description")
-      .populate("managerId", "name email role")
+      .populate("supervisorId", "name email role")
       .populate("createdBy", "name email role")
       .sort({ createdAt: -1 });
 
     res.json(users);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || "Server Error" });
+  }
+};
+
+// ─────────────────────────────────────────────
+// @desc    Get supervisors scoped by department
+// @route   GET /api/users/supervisors?departmentId=xxx
+// @access  super_admin | admin
+// Returns only users with role=supervisor optionally filtered by department
+// ─────────────────────────────────────────────
+export const getSupervisorsByDept = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { departmentId } = req.query;
+
+    const filter: Record<string, any> = { role: "supervisor" };
+
+    // If caller is admin, scope to their own department only (ignore query param)
+    if (req.user!.role === "admin") {
+      const admin = await User.findById(req.user!.id).select("departmentId");
+      if (!admin?.departmentId) {
+        res.json([]); // admin with no dept sees no supervisors
+        return;
+      }
+      filter.departmentId = admin.departmentId;
+    } else if (departmentId) {
+      // super_admin can filter by any department
+      filter.departmentId = departmentId;
+    }
+
+    const supervisors = await User.find(filter)
+      .select("_id name email departmentId")
+      .populate("departmentId", "name")
+      .sort({ name: 1 });
+
+    res.json(supervisors);
   } catch (error: any) {
     res.status(500).json({ message: error.message || "Server Error" });
   }
@@ -158,7 +194,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
     const user = await User.findOne({ _id: req.params.id, ...filter })
       .select("-password")
       .populate("departmentId", "name description")
-      .populate("managerId", "name email role")
+      .populate("supervisorId", "name email role")
       .populate("createdBy", "name email role");
 
     if (!user) {
@@ -198,7 +234,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     const allowedUpdates: Record<string, any> = {};
-    const updatableFields = ["name", "email", "role", "departmentId", "managerId"];
+    const updatableFields = ["name", "email", "role", "departmentId", "supervisorId"];
     updatableFields.forEach((field) => {
       if (req.body[field] !== undefined) allowedUpdates[field] = req.body[field];
     });
@@ -216,7 +252,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     )
       .select("-password")
       .populate("departmentId", "name description")
-      .populate("managerId", "name email role")
+      .populate("supervisorId", "name email role")
       .populate("createdBy", "name email role");
 
     if (!user) {

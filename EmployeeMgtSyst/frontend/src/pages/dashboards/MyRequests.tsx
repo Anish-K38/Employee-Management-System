@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../hooks/useAuth";
-import { formatDistanceToNow, differenceInDays } from "date-fns";
+import { differenceInDays } from "date-fns";
 import { CheckCircle2, XCircle, Clock, Ban } from "lucide-react";
 
 interface LeaveRequest {

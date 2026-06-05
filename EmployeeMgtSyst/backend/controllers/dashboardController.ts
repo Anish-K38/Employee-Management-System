@@ -32,7 +32,7 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
     }
 
     if (role === "supervisor") {
-      const reportees = await User.find({ managerId: id }).select("_id");
+      const reportees = await User.find({ supervisorId: id }).select("_id");
       const reporteeIds = reportees.map((u) => u._id);
 
       const today = new Date();
@@ -131,7 +131,7 @@ export const getTrends = async (req: Request, res: Response): Promise<void> => {
     if (role === "employee") {
       matchQuery.employeeId = id;
     } else if (role === "supervisor") {
-      const reportees = await User.find({ managerId: id }).select("_id");
+      const reportees = await User.find({ supervisorId: id }).select("_id");
       matchQuery.employeeId = { $in: reportees.map(u => u._id) };
     } else if (role === "admin") {
       const actor = await User.findById(id).select("departmentId");
@@ -178,7 +178,7 @@ export const getDistribution = async (req: Request, res: Response): Promise<void
     if (role === "employee") {
       matchQuery.employeeId = id;
     } else if (role === "supervisor") {
-      const reportees = await User.find({ managerId: id }).select("_id");
+      const reportees = await User.find({ supervisorId: id }).select("_id");
       matchQuery.employeeId = { $in: reportees.map(u => u._id) };
     } else if (role === "admin") {
       const actor = await User.findById(id).select("departmentId");

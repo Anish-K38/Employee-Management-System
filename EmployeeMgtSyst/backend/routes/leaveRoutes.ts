@@ -7,6 +7,7 @@ import {
   cancelLeave,
   supervisorAction,
   adminAction,
+  superAdminAction,
 } from "../controllers/leaveController.js";
 import { protect } from "../middleware/protect.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
@@ -31,12 +32,16 @@ router.patch("/:id/supervisor-action", protect, authorize("supervisor"), supervi
 
 // ── Stage 2: Admin acts ──────────────────────────────────────
 // PATCH /api/leaves/:id/admin-action
-router.patch("/:id/admin-action", protect, authorize("admin"), adminAction);
+router.patch("/:id/admin-action", protect, authorize("admin", "super_admin"), adminAction);
+
+// ── Stage 3: Super Admin acts ────────────────────────────────
+// PATCH /api/leaves/:id/superadmin-action
+router.patch("/:id/superadmin-action", protect, authorize("super_admin"), superAdminAction);
 
 // ── View leaves (scoped) ─────────────────────────────────────
 // GET /api/leaves        — supervisor+ (scoped by role)
 // GET /api/leaves/:id    — supervisor+ or leave owner
-router.get("/", protect, authorize("supervisor"), getAllLeaves);
-router.get("/:id", protect, authorize("supervisor"), getLeaveById);
+router.get("/", protect, authorize("supervisor", "admin", "super_admin"), getAllLeaves);
+router.get("/:id", protect, authorize("supervisor", "admin", "super_admin"), getLeaveById);
 
 export default router;

@@ -10,14 +10,19 @@ export interface ILeave extends mongoose.Document {
   rejectionReason?: string;
 
   // Stage 1 — Supervisor
-  supervisorApproval: "pending" | "approved" | "rejected";
+  supervisorApproval: "pending" | "approved" | "rejected" | "not_required";
   supervisorId?: mongoose.Types.ObjectId;   // who acted
   supervisorRemark?: string;                // reason / note
 
   // Stage 2 — Admin
-  adminApproval: "pending" | "approved" | "rejected";
+  adminApproval: "pending" | "approved" | "rejected" | "not_required";
   adminId?: mongoose.Types.ObjectId;        // who acted
   adminRemark?: string;                     // reason / note
+
+  // Stage 3 — Super Admin
+  superAdminApproval: "pending" | "approved" | "rejected" | "not_required";
+  superAdminId?: mongoose.Types.ObjectId;   // who acted
+  superAdminRemark?: string;                // reason / note
 }
 
 const leaveSchema = new mongoose.Schema(
@@ -65,7 +70,7 @@ const leaveSchema = new mongoose.Schema(
     // ── Stage 1: Supervisor ──────────────────────
     supervisorApproval: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "not_required"],
       default: "pending",
     },
 
@@ -84,7 +89,7 @@ const leaveSchema = new mongoose.Schema(
     // ── Stage 2: Admin ───────────────────────────
     adminApproval: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "not_required"],
       default: "pending",
     },
 
@@ -95,6 +100,25 @@ const leaveSchema = new mongoose.Schema(
     },
 
     adminRemark: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    // ── Stage 3: Super Admin ─────────────────────
+    superAdminApproval: {
+      type: String,
+      enum: ["pending", "approved", "rejected", "not_required"],
+      default: "not_required",
+    },
+
+    superAdminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    superAdminRemark: {
       type: String,
       trim: true,
       default: null,

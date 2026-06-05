@@ -192,7 +192,8 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     const user = await User.findById(req.user!.id)
       .select("-password")
       .populate("departmentId", "name description")
-      .populate("managerId", "name email role");
+      .populate("supervisorId", "name email role")
+      .populate("createdBy", "name email role");
 
     if (!user) {
       res.status(404).json({ message: "User not found" });

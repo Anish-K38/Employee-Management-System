@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, useAuth } from "../../hooks/useAuth";
-import { formatDistanceToNow, differenceInBusinessDays } from "date-fns";
+import { differenceInBusinessDays } from "date-fns";
 import { CheckCircle2, XCircle, Clock, Check, X } from "lucide-react";
 
 interface LeaveRequest {
@@ -12,11 +12,13 @@ interface LeaveRequest {
   status: string;
   supervisorApproval: string;
   adminApproval: string;
+  superAdminApproval: string;
   createdAt: string;
   employeeId: {
     _id: string;
     name: string;
     email: string;
+    role?: string;
     departmentId?: string;
   };
 }
@@ -54,7 +56,11 @@ export default function LeaveApprovals() {
     setSubmitting(true);
 
     try {
-      const endpoint = user?.role === "admin" ? "admin-action" : "supervisor-action";
+      let endpoint = "";
+      if (user?.role === "super_admin") endpoint = "superadmin-action";
+      else if (user?.role === "admin") endpoint = "admin-action";
+      else endpoint = "supervisor-action";
+
       await api.patch(`/leaves/${actionLeave._id}/${endpoint}`, {
         action: actionType,
         remark: remark || undefined,
@@ -82,10 +88,16 @@ export default function LeaveApprovals() {
 
   // Determine if the current user needs to act on this leave
   const needsMyAction = (req: LeaveRequest) => {
+    // Prevent seeing own leave in needs action
+    if (req.employeeId._id === user?._id) return false;
+
     if (user?.role === "supervisor" && req.supervisorApproval === "pending" && req.status !== "cancelled") {
       return true;
     }
-    if (user?.role === "admin" && req.supervisorApproval === "approved" && req.adminApproval === "pending" && req.status !== "cancelled") {
+    if (user?.role === "admin" && req.supervisorApproval !== "pending" && req.supervisorApproval !== "rejected" && req.adminApproval === "pending" && req.status !== "cancelled") {
+      return true;
+    }
+    if (user?.role === "super_admin" && req.adminApproval !== "pending" && req.adminApproval !== "rejected" && req.superAdminApproval === "pending" && req.status !== "cancelled") {
       return true;
     }
     return false;
@@ -119,6 +131,12 @@ export default function LeaveApprovals() {
         return (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-gray-500/50 text-gray-400 bg-gray-500/10">
             <XCircle size={14} /> Cancelled
+          </div>
+        );
+      case "not_required":
+        return (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-gray-500/50 text-gray-400 bg-gray-500/10">
+            <Check size={14} /> Not Req.
           </div>
         );
       default:
@@ -168,13 +186,14 @@ export default function LeaveApprovals() {
               <th className="p-4 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Overall Status</th>
               <th className="p-4 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Supervisor</th>
               <th className="p-4 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Admin</th>
+              <th className="p-4 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Super Admin</th>
               <th className="p-4 text-xs font-semibold uppercase tracking-wider text-right" style={{ color: "var(--text-muted)" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredRequests.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+                <td colSpan={8} className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>
                   {filter === "Needs Action" ? "You're all caught up! No leaves require your action." : "No leave requests found."}
                 </td>
               </tr>
@@ -208,6 +227,9 @@ export default function LeaveApprovals() {
                     </td>
                     <td className="p-4">
                       {getStatusBadge(req.adminApproval, "stage")}
+                    </td>
+                    <td className="p-4">
+                      {getStatusBadge(req.superAdminApproval, "stage")}
                     </td>
                     <td className="p-4 text-right">
                       {isActionable ? (

@@ -3,6 +3,7 @@ import {
   getMe,
   createUser,
   getAllUsers,
+  getSupervisorsByDept,
   getUserById,
   updateUser,
   deleteUser,
@@ -15,6 +16,12 @@ const router = express.Router();
 // ── Own profile ──────────────────────────────
 // GET /api/users/me
 router.get("/me", protect, getMe);
+
+// ── Supervisor lookup (dept-scoped) ──────────
+// GET /api/users/supervisors?departmentId=xxx
+// Returns supervisors filtered by department — used to populate the supervisor dropdown in user forms
+// Must be registered BEFORE /:id to avoid "supervisors" being treated as an ID param
+router.get("/supervisors", protect, authorize("admin", "super_admin"), getSupervisorsByDept);
 
 // ── User creation ────────────────────────────
 // POST /api/users

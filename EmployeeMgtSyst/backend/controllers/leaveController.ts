@@ -12,6 +12,7 @@ const populateLeave = (query: any): Promise<any> =>
     .populate("employeeId", "name email role departmentId")
     .populate("supervisorId", "name email role")
     .populate("adminId", "name email role")
+    .populate("superAdminId", "name email role")
     .lean();
 
 
@@ -56,15 +57,35 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    const { role } = req.user!;
+    let supervisorApproval = "pending";
+    let adminApproval = "pending";
+    let superAdminApproval = "not_required";
+    let status = "pending";
+
+    if (role === "supervisor") {
+      supervisorApproval = "not_required";
+    } else if (role === "admin") {
+      supervisorApproval = "not_required";
+      adminApproval = "not_required";
+      superAdminApproval = "pending";
+    } else if (role === "super_admin") {
+      supervisorApproval = "not_required";
+      adminApproval = "not_required";
+      superAdminApproval = "not_required";
+      status = "approved";
+    }
+
     const leave = await Leave.create({
       employeeId: req.user!.id,
       leaveType,
       startDate: start,
       endDate: end,
       reason,
-      status: "pending",
-      supervisorApproval: "pending",
-      adminApproval: "pending",
+      status,
+      supervisorApproval,
+      adminApproval,
+      superAdminApproval,
     });
 
     const populated = await populateLeave(Leave.findById(leave._id));
@@ -96,7 +117,7 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
 // @desc    Get all leaves (scoped by role)
 // @route   GET /api/leaves
 // @access  supervisor | admin | super_admin
-//   supervisor  → only employees who report to them (managerId = actor._id)
+//   supervisor  → only employees who report to them (supervisorId = actor._id)
 //   admin       → all employees in their department
 //   super_admin → everything
 // ─────────────────────────────────────────────────────────────
@@ -106,8 +127,8 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     let filter: Record<string, any> = {};
 
     if (role === "supervisor") {
-      // Employees whose managerId points to this supervisor
-      const reportees = await User.find({ managerId: id }).select("_id");
+      // Employees whose supervisorId points to this supervisor
+      const reportees = await User.find({ supervisorId: id }).select("_id");
       const reporteeIds = reportees.map((u) => u._id);
       filter = { employeeId: { $in: reporteeIds } };
     } else if (role === "admin") {
@@ -159,8 +180,8 @@ export const getLeaveById = async (req: Request, res: Response): Promise<void> =
 
     // Supervisor can see leaves of their reportees
     if (role === "supervisor") {
-      const employee = await User.findById(employeeId).select("managerId");
-      if (employee?.managerId?.toString() !== id) {
+      const employee = await User.findById(employeeId).select("supervisorId");
+      if (employee?.supervisorId?.toString() !== id) {
         res.status(403).json({ message: "Access denied. This employee does not report to you." });
         return;
       }
@@ -240,17 +261,23 @@ export const supervisorAction = async (req: Request, res: Response): Promise<voi
     }
 
     const leave = await Leave.findById(req.params.id).populate<{
-      employeeId: { managerId?: any };
-    }>("employeeId", "managerId");
+      employeeId: { supervisorId?: any };
+    }>("employeeId", "supervisorId");
 
     if (!leave) {
       res.status(404).json({ message: "Leave not found" });
       return;
     }
 
+    // Prevent self-approval
+    if (leave.employeeId._id.toString() === req.user!.id) {
+      res.status(403).json({ message: "You cannot approve your own leave." });
+      return;
+    }
+
     // Verify this employee actually reports to this supervisor
-    const managerId = (leave.employeeId as any).managerId?.toString();
-    if (managerId !== req.user!.id) {
+    const supervisorIdVal = (leave.employeeId as any).supervisorId?.toString();
+    if (supervisorIdVal !== req.user!.id) {
       res.status(403).json({
         message: "Access denied. This employee does not report to you.",
       });
@@ -277,6 +304,8 @@ export const supervisorAction = async (req: Request, res: Response): Promise<voi
     // Short-circuit: if rejected, mark overall status as rejected immediately
     if (action === "rejected") {
       leave.status = "rejected";
+    } else if (leave.adminApproval === "not_required" && leave.superAdminApproval === "not_required") {
+      leave.status = "approved"; // If no further stages needed (rare edge case)
     }
 
     await leave.save();
@@ -310,6 +339,12 @@ export const adminAction = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Prevent self-approval
+    if (leave.employeeId.toString() === req.user!.id) {
+      res.status(403).json({ message: "You cannot approve your own leave." });
+      return;
+    }
+
     // Admin dept-scoping check
     if (req.user!.role === "admin") {
       const adminFilter = await buildAdminFilter(req.user!.id);
@@ -331,8 +366,8 @@ export const adminAction = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Stage 1 must be complete before admin can act
-    if (leave.supervisorApproval !== "approved") {
+    // Stage 1 must be complete before admin can act (unless it was bypassed)
+    if (leave.supervisorApproval !== "approved" && leave.supervisorApproval !== "not_required") {
       res.status(400).json({
         message:
           leave.supervisorApproval === "pending"
@@ -353,6 +388,78 @@ export const adminAction = async (req: Request, res: Response): Promise<void> =>
     leave.adminApproval = action;
     leave.adminId = req.user!.id as any;
     if (remark) leave.adminRemark = remark;
+
+    // Finalise overall status if no Stage 3 is required
+    if (action === "rejected") {
+      leave.status = "rejected";
+    } else if (leave.superAdminApproval === "not_required") {
+      leave.status = "approved";
+    }
+
+    await leave.save();
+
+    const populated = await populateLeave(Leave.findById(leave._id));
+    res.json(populated);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || "Server Error" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// @desc    Super Admin approves or rejects a leave (Stage 3)
+// @route   PATCH /api/leaves/:id/superadmin-action
+// @access  super_admin
+// Body: { action: "approved" | "rejected", remark?: string }
+// ─────────────────────────────────────────────────────────────
+export const superAdminAction = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { action, remark } = req.body;
+
+    if (!action || !["approved", "rejected"].includes(action)) {
+      res.status(400).json({ message: 'action must be "approved" or "rejected"' });
+      return;
+    }
+
+    const leave = await Leave.findById(req.params.id);
+
+    if (!leave) {
+      res.status(404).json({ message: "Leave not found" });
+      return;
+    }
+
+    // Prevent self-approval
+    if (leave.employeeId.toString() === req.user!.id) {
+      res.status(403).json({ message: "You cannot approve your own leave." });
+      return;
+    }
+
+    if (leave.status === "cancelled") {
+      res.status(400).json({ message: "Cannot act on a cancelled leave." });
+      return;
+    }
+
+    // Prior stages must be complete or not_required
+    if (
+      (leave.supervisorApproval !== "approved" && leave.supervisorApproval !== "not_required") ||
+      (leave.adminApproval !== "approved" && leave.adminApproval !== "not_required")
+    ) {
+      res.status(400).json({
+        message: "Cannot act yet — prior approval stages are not complete.",
+      });
+      return;
+    }
+
+    if (leave.superAdminApproval !== "pending") {
+      res.status(400).json({
+        message: `Super Admin has already ${leave.superAdminApproval} this leave.`,
+      });
+      return;
+    }
+
+    // Apply stage 3
+    leave.superAdminApproval = action;
+    leave.superAdminId = req.user!.id as any;
+    if (remark) leave.superAdminRemark = remark;
 
     // Finalise overall status
     leave.status = action === "approved" ? "approved" : "rejected";

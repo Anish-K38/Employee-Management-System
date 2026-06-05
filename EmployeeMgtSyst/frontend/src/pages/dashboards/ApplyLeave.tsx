@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useDashboardData } from "../../hooks/useDashboardData";
-import { api } from "../../hooks/useAuth";
+import { api, useAuth } from "../../hooks/useAuth";
 import { CalendarDays, Plus, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { differenceInBusinessDays } from "date-fns";
 
 export default function ApplyLeave() {
   const { data, loading } = useDashboardData(); // Reusing the KPI fetch for balances
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [leaveType, setLeaveType] = useState("");
@@ -28,7 +29,12 @@ export default function ApplyLeave() {
         endDate,
         reason,
       });
-      navigate("/employee/requests"); // Redirect to requests upon success
+
+      let redirectPath = "/employee/requests";
+      if (user?.role === "admin") redirectPath = "/admin/requests";
+      else if (user?.role === "supervisor") redirectPath = "/supervisor/requests";
+      
+      navigate(redirectPath); // Redirect to requests upon success
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to submit leave request.");
     } finally {
