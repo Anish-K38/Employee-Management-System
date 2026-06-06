@@ -8,18 +8,18 @@
   --deepblue: #0006bc;
   --orange: #ff9900;
   
-  --card: rgba(255, 255, 255, 0.62);
-  --popover: rgba(255, 255, 255, 0.85);
+  --card: rgba(255, 255, 255, 0.85);
+  --popover: rgba(255, 255, 255, 0.95);
   --border: rgba(0, 136, 204, 0.2);
-  --input-bg: rgba(255, 255, 255, 0.5);
+  --input-bg: rgba(255, 255, 255, 0.7);
   --destructive: #ff4444;
   
   --secondary: rgba(0, 136, 204, 0.1);
   --muted: rgba(0, 136, 204, 0.08);
-  --sidebar: rgba(255, 255, 255, 0.15);
+  --sidebar: rgba(255, 255, 255, 0.75);
   
-  --text-secondary: #4a5568;
-  --text-muted: #718096;
+  --text-secondary: #2d3748;
+  --text-muted: #4a5568;
 }
 
 .dark {

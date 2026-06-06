@@ -3,23 +3,27 @@ import { useDashboardData } from "../../hooks/useDashboardData";
 import { api, useAuth } from "../../hooks/useAuth";
 import { CalendarDays, Plus, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { differenceInBusinessDays } from "date-fns";
+import { eachDayOfInterval } from "date-fns";
+import LeaveBalancesWidget from "../../components/dashboard/LeaveBalancesWidget";
+import { useToast } from "../../hooks/useToast";
 
 export default function ApplyLeave() {
   const { data, loading } = useDashboardData(); // Reusing the KPI fetch for balances
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Today's date string for min attribute (restrict past dates)
+  const today = new Date().toISOString().split("T")[0];
 
   const [leaveType, setLeaveType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSubmitLoading(true);
 
     try {
@@ -34,9 +38,10 @@ export default function ApplyLeave() {
       if (user?.role === "admin") redirectPath = "/admin/requests";
       else if (user?.role === "supervisor") redirectPath = "/supervisor/requests";
       
+      toast("Leave request submitted successfully", "success");
       navigate(redirectPath); // Redirect to requests upon success
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to submit leave request.");
+      toast(err.response?.data?.message || "Failed to submit leave request.", "error");
     } finally {
       setSubmitLoading(false);
     }
@@ -47,19 +52,17 @@ export default function ApplyLeave() {
     setStartDate("");
     setEndDate("");
     setReason("");
-    setError("");
   };
 
-  // Calculate working days requested
+  // Calculate working days requested (Monday to Saturday)
   let workingDays = 0;
   if (startDate && endDate) {
     const sDate = new Date(startDate);
     const eDate = new Date(endDate);
     if (eDate >= sDate) {
-      // differenceInBusinessDays returns 0 for same day, so we add 1 if both are weekdays
-      workingDays = differenceInBusinessDays(eDate, sDate) + 1;
-      // Note: If start date is weekend and end date is weekend, this might need more robust logic,
-      // but this works for general cases.
+      const allDays = eachDayOfInterval({ start: sDate, end: eDate });
+      // Exclude only Sunday (0)
+      workingDays = allDays.filter((day) => day.getDay() !== 0).length;
     }
   }
 
@@ -71,12 +74,6 @@ export default function ApplyLeave() {
           Submit a new leave request for manager review
         </p>
       </div>
-
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm">
-          {error}
-        </div>
-      )}
 
       {/* Form Container */}
       <div className="glass-card rounded-2xl p-6 lg:p-8">
@@ -112,8 +109,13 @@ export default function ApplyLeave() {
                 <input
                   type="date"
                   required
+                  min={today}
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    // Clear end date if it's now before the new start date
+                    if (endDate && e.target.value > endDate) setEndDate("");
+                  }}
                   className="w-full pl-4 pr-10 py-3 rounded-xl border focus:outline-none focus:ring-2"
                   style={{ 
                     borderColor: "var(--border)", 
@@ -131,6 +133,7 @@ export default function ApplyLeave() {
                 <input
                   type="date"
                   required
+                  min={startDate || today}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full pl-4 pr-10 py-3 rounded-xl border focus:outline-none focus:ring-2"
@@ -195,47 +198,9 @@ export default function ApplyLeave() {
       </div>
 
       {/* Balances Widget */}
-      <div className="glass-card rounded-2xl p-6 mt-8">
-        <h2 className="text-base font-semibold mb-6" style={{ color: "var(--foreground)" }}>Your Available Balances</h2>
-        
-        {loading ? (
-          <div className="text-sm" style={{ color: "var(--text-muted)" }}>Loading balances...</div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-12">
-            <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
-                <span style={{ color: "var(--text-secondary)" }}>Annual Leave</span>
-              </div>
-              <span className="font-semibold" style={{ color: "var(--primary)" }}>{data?.kpis?.annualBalance || 0}d</span>
-            </div>
-            
-            <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#00cc00" }} />
-                <span style={{ color: "var(--text-secondary)" }}>Sick Leave</span>
-              </div>
-              <span className="font-semibold text-green-500">{data?.kpis?.sickBalance || 0}d</span>
-            </div>
-
-            <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--orange)" }} />
-                <span style={{ color: "var(--text-secondary)" }}>Casual Leave</span>
-              </div>
-              <span className="font-semibold" style={{ color: "var(--orange)" }}>{data?.kpis?.casualBalance || 0}d</span>
-            </div>
-
-            <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#8884d8" }} />
-                <span style={{ color: "var(--text-secondary)" }}>Unpaid Leave</span>
-              </div>
-              <span className="font-semibold" style={{ color: "#8884d8" }}>30d</span>
-            </div>
-          </div>
-        )}
-      </div>
+      {!loading && data?.kpis?.leaveBalances && (
+        <LeaveBalancesWidget leaveBalances={data.kpis.leaveBalances} />
+      )}
     </div>
   );
 }

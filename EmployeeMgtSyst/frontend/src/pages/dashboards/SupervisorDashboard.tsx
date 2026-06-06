@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { KPICard } from "../../components/dashboard/KPICard";
+import LeaveBalancesWidget from "../../components/dashboard/LeaveBalancesWidget";
+import { OnLeaveModal } from "../../components/dashboard/OnLeaveModal";
 import { Users, CalendarClock, CalendarDays, ArrowRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function SupervisorDashboard() {
   const { data, loading, error } = useDashboardData();
+  const [isOnLeaveModalOpen, setIsOnLeaveModalOpen] = useState(false);
 
   if (loading) {
     return (
@@ -16,7 +20,15 @@ export default function SupervisorDashboard() {
     );
   }
 
-  if (error || !data) return null;
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[50vh] text-sm" style={{ color: "var(--text-muted)" }}>
+        Error loading dashboard: {error}
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   return (
     <div className="space-y-6">
@@ -41,6 +53,7 @@ export default function SupervisorDashboard() {
           subtitle="Unavailable"
           icon={<CalendarDays size={20} />}
           colorTheme={data.kpis.onLeaveToday > 0 ? "orange" : "accent"}
+          onClick={() => setIsOnLeaveModalOpen(true)}
         />
         <KPICard
           title="Pending Review"
@@ -57,6 +70,9 @@ export default function SupervisorDashboard() {
           colorTheme="primary"
         />
       </div>
+
+      {/* Leave Balances Widget */}
+      <LeaveBalancesWidget leaveBalances={data.kpis.leaveBalances} />
 
       {/* Notifications/Activity could go here. For supervisor, calendar view of upcoming leaves is requested in spec, but for MVP we will just show activity feed */}
       <div className="glass-card rounded-2xl p-6 mt-6">
@@ -78,6 +94,12 @@ export default function SupervisorDashboard() {
           </div>
         )}
       </div>
+
+      <OnLeaveModal 
+        isOpen={isOnLeaveModalOpen} 
+        onClose={() => setIsOnLeaveModalOpen(false)} 
+        employees={data.kpis.onLeaveEmployees || []} 
+      />
     </div>
   );
 }

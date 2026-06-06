@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { KPICard } from "../../components/dashboard/KPICard";
+import LeaveBalancesWidget from "../../components/dashboard/LeaveBalancesWidget";
+import { OnLeaveModal } from "../../components/dashboard/OnLeaveModal";
 import { Users, CalendarClock, UserCheck, XCircle } from "lucide-react";
 import {
   BarChart,
@@ -18,6 +21,7 @@ const PIE_COLORS = ["#0088cc", "#00cc00", "#ff9900", "#ff4444", "#0006bc", "#888
 
 export default function AdminDashboard() {
   const { data, loading, error } = useDashboardData();
+  const [isOnLeaveModalOpen, setIsOnLeaveModalOpen] = useState(false);
 
   if (loading) {
     return (
@@ -31,9 +35,8 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl bg-red-50 text-red-600 border border-red-200">
-        <p className="font-medium">Failed to load dashboard</p>
-        <p className="text-sm mt-1">{error}</p>
+      <div className="flex items-center justify-center h-[50vh] text-sm" style={{ color: "var(--text-muted)" }}>
+        Error loading dashboard: {error}
       </div>
     );
   }
@@ -60,15 +63,16 @@ export default function AdminDashboard() {
         <KPICard
           title="On Leave Today"
           value={data.kpis.onLeaveToday}
-          subtitle="Currently out"
-          icon={<UserCheck size={20} />}
-          colorTheme="accent"
+          subtitle="Unavailable"
+          icon={<CalendarClock size={20} />}
+          colorTheme={data.kpis.onLeaveToday > 0 ? "orange" : "accent"}
+          onClick={() => setIsOnLeaveModalOpen(true)}
         />
         <KPICard
           title="Pending Approvals"
           value={data.kpis.pendingApprovals}
           subtitle="Awaiting admin action"
-          icon={<CalendarClock size={20} />}
+          icon={<UserCheck size={20} />}
           colorTheme={data.kpis.pendingApprovals > 0 ? "orange" : "primary"}
         />
         <KPICard
@@ -79,6 +83,9 @@ export default function AdminDashboard() {
           colorTheme="destructive"
         />
       </div>
+
+      {/* Leave Balances Widget */}
+      <LeaveBalancesWidget leaveBalances={data.kpis.leaveBalances} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 glass-card rounded-2xl p-6">
@@ -134,6 +141,12 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      <OnLeaveModal 
+        isOpen={isOnLeaveModalOpen} 
+        onClose={() => setIsOnLeaveModalOpen(false)} 
+        employees={data.kpis.onLeaveEmployees || []} 
+      />
     </div>
   );
 }

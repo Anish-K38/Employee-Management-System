@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useToast } from "./useToast";
 
 // ─────────────────────────────────────────────────────────────
 // Role → dashboard route mapping
@@ -69,6 +70,7 @@ api.interceptors.request.use((config) => {
 // ─────────────────────────────────────────────────────────────
 export function useAuth() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState<AuthUser | null>(getStoredUser);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,14 +101,14 @@ export function useAuth() {
         const route = ROLE_DASHBOARD[data.user.role] ?? "/employee/dashboard";
         navigate(route);
       } catch (err: any) {
-        setError(
-          err.response?.data?.message || "Login failed. Please try again."
-        );
+        const errMsg = err.response?.data?.message || "Login failed. Please try again.";
+        setError(errMsg);
+        toast(errMsg, "error");
       } finally {
         setLoading(false);
       }
     },
-    [navigate]
+    [navigate, toast]
   );
 
   const logout = useCallback(() => {

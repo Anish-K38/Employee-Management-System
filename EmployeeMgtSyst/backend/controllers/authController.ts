@@ -3,11 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.js";
 
-// ─────────────────────────────────────────────────────────────
-// Helper: generate a signed JWT
-//   rememberMe = true  → 30 days
-//   rememberMe = false → 1 day
-// ─────────────────────────────────────────────────────────────
+
 export const generateToken = (id: string, role: string, rememberMe = false) => {
   return jwt.sign(
     { id, role },
@@ -16,56 +12,6 @@ export const generateToken = (id: string, role: string, rememberMe = false) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// [COMMENTED OUT] Public registration removed for security.
-// User accounts are now created exclusively by super_admin / admin
-// via POST /api/users.
-// ─────────────────────────────────────────────────────────────
-// export const register = async (req: Request, res: Response): Promise<void> => {
-//   try {
-//     const { name, email, password, role } = req.body;
-//     if (!name || !email || !password) {
-//       res.status(400).json({ message: "Please enter all fields" });
-//       return;
-//     }
-//     const userExists = await User.findOne({ email });
-//     if (userExists) {
-//       res.status(400).json({ message: "User already exists" });
-//       return;
-//     }
-//     const salt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(password, salt);
-//     const user = await User.create({
-//       name,
-//       email,
-//       password: hashedPassword,
-//       role: role || "employee",
-//     });
-//     if (user) {
-//       res.status(201).json({
-//         _id: user.id,
-//         name: user.name,
-//         email: user.email,
-//         role: user.role,
-//         token: generateToken(user.id, user.role),
-//       });
-//     } else {
-//       res.status(400).json({ message: "Invalid user data" });
-//     }
-//   } catch (error: any) {
-//     res.status(500).json({ message: error.message || "Server Error" });
-//   }
-// };
-
-
-// ─────────────────────────────────────────────────────────────
-// @desc    Login with email + password
-// @route   POST /api/auth/login
-// @access  Public
-// Body: { email, password, rememberMe? }
-// Returns token + user object (including role) so the frontend
-// can redirect to the correct role-based dashboard automatically.
-// ─────────────────────────────────────────────────────────────
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, rememberMe = false } = req.body;
@@ -81,7 +27,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Block deactivated accounts
+
     if (!user.isActive) {
       res.status(403).json({ message: "Your account has been deactivated. Contact your administrator." });
       return;
@@ -109,12 +55,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 };
 
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Change own password
-// @route   POST /api/auth/change-password
-// @access  Any authenticated user
-// Body: { currentPassword, newPassword }
-// ─────────────────────────────────────────────────────────────
+
 export const changePassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const { currentPassword, newPassword } = req.body;

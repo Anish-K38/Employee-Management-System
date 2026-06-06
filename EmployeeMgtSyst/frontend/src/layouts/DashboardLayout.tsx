@@ -10,7 +10,9 @@ import {
   Users,
   Settings,
   LogOut,
-  FileText
+  FileText,
+  Menu,
+  X
 } from "lucide-react";
 
 interface SidebarItem {
@@ -23,6 +25,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (!user) return null;
 
@@ -62,9 +65,28 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--background)" }}>
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden flex justify-end"
+          onClick={() => setIsSidebarOpen(false)}
+        >
+          {/* Close button outside the sidebar */}
+          <button 
+            className="p-3 m-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-colors self-start"
+            onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(false); }}
+            aria-label="Close menu"
+          >
+            <X size={24} />
+          </button>
+        </div>
+      )}
+
       {/* Sidebar */}
       <div
-        className="w-64 flex flex-col justify-between border-r backdrop-blur-xl"
+        className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col justify-between border-r backdrop-blur-xl transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
         style={{
           background: "var(--sidebar)",
           borderColor: "var(--border)",
@@ -85,7 +107,9 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 LeaveFlow
               </span>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+            </div>
           </div>
 
           <div className="p-4 space-y-1">
@@ -98,6 +122,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.name}
                   to={item.path}
+                  onClick={() => setIsSidebarOpen(false)}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive ? "shadow-sm" : "hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
@@ -141,9 +166,34 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative w-full">
+        {/* Mobile Header (visible only on small screens) */}
+        <div 
+          className="lg:hidden h-16 border-b flex items-center px-4 shrink-0 backdrop-blur-md z-10 sticky top-0"
+          style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--background) 80%, transparent)" }}
+        >
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 mr-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            style={{ color: "var(--foreground)" }}
+          >
+            <Menu size={24} />
+          </button>
+          <div className="flex items-center gap-2 font-bold text-lg" style={{ color: "var(--foreground)" }}>
+            <div
+              className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+              style={{ background: "var(--primary)" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </div>
+            LeaveFlow
+          </div>
+        </div>
+
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-8 z-0 relative">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 z-0 relative">
           {/* Subtle background gradients for visual flair */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-10 blur-3xl pointer-events-none" style={{ background: "var(--primary)" }} />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full opacity-5 blur-3xl pointer-events-none" style={{ background: "var(--accent)" }} />

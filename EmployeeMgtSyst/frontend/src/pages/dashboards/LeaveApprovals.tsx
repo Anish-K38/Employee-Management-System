@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../hooks/useToast";
 import { differenceInBusinessDays } from "date-fns";
 import { CheckCircle2, XCircle, Clock, Check, X } from "lucide-react";
 
@@ -25,6 +26,7 @@ interface LeaveRequest {
 
 export default function LeaveApprovals() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("Needs Action");
@@ -67,8 +69,9 @@ export default function LeaveApprovals() {
       });
       fetchRequests();
       closeModal();
+      toast(`Leave request ${actionType} successfully`, "success");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to process leave action");
+      toast(err.response?.data?.message || "Failed to process leave action", "error");
     } finally {
       setSubmitting(false);
     }

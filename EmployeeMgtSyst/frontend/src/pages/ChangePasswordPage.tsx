@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getStoredUser, clearAuth } from "../hooks/useAuth";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { useToast } from "../hooks/useToast";
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -12,9 +13,9 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const { toast } = useToast();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -30,7 +31,6 @@ export default function ChangePasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setServerError("");
     const validationErrors = validate();
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
@@ -39,8 +39,9 @@ export default function ChangePasswordPage() {
     try {
       await api.post("/auth/change-password", { currentPassword, newPassword });
       setSuccess(true);
+      toast("Password changed successfully", "success");
     } catch (err: any) {
-      setServerError(err.response?.data?.message || "Failed to change password. Please try again.");
+      toast(err.response?.data?.message || "Failed to change password. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -92,9 +93,7 @@ export default function ChangePasswordPage() {
         <h1 className="text-4xl font-bold mb-1 tracking-tight" style={{ color: "var(--foreground)" }}>
           LeaveFlow
         </h1>
-        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>
-          HR Management Portal
-        </p>
+
       </div>
 
       {/* Card */}
@@ -157,23 +156,6 @@ export default function ChangePasswordPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-              {/* Server error */}
-              {serverError && (
-                <div
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-                  style={{
-                    background: "color-mix(in srgb, var(--destructive) 12%, transparent)",
-                    color: "var(--destructive)",
-                    border: "1px solid color-mix(in srgb, var(--destructive) 30%, transparent)",
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {serverError}
-                </div>
-              )}
-
               {/* Current Password */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="cp-current" className="text-sm font-medium" style={{ color: "var(--foreground)" }}>

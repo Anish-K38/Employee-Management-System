@@ -1,15 +1,7 @@
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { KPICard } from "../../components/dashboard/KPICard";
+import LeaveBalancesWidget from "../../components/dashboard/LeaveBalancesWidget";
 import { Umbrella, HeartPulse, Clock, FileText } from "lucide-react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-
-const PIE_COLORS = ["#0088cc", "#00cc00", "#ff9900", "#ff4444", "#0006bc", "#8884d8"];
 
 export default function EmployeeDashboard() {
   const { data, loading, error } = useDashboardData();
@@ -66,45 +58,27 @@ export default function EmployeeDashboard() {
         />
       </div>
 
+      {/* Leave Balances Widget */}
+      <LeaveBalancesWidget leaveBalances={data.kpis.leaveBalances} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="glass-card rounded-2xl p-6 lg:col-span-1">
           <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--foreground)" }}>My Leave Usage</h2>
-          {data.distribution.length === 0 ? (
+          {(!data.kpis.recentLeaves || data.kpis.recentLeaves.length === 0) ? (
              <div className="h-64 w-full flex items-center justify-center text-sm" style={{ color: "var(--text-muted)" }}>No leaves taken yet</div>
           ) : (
-            <>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <PieChart>
-                    <Pie
-                      data={data.distribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="count"
-                      nameKey="label"
-                    >
-                      {data.distribution.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--foreground)' }} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 justify-center">
-                {data.distribution.map((entry, index) => (
-                  <div key={index} className="flex items-center gap-1.5 text-xs font-medium capitalize" style={{ color: "var(--text-secondary)" }}>
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
-                    {entry.label} <span style={{ color: "var(--foreground)" }}>{entry.count}</span>
+            <div className="h-64 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+              {data.kpis.recentLeaves.map((leave: any) => (
+                <div key={leave._id} className="p-3 rounded-xl border flex flex-col" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--primary) 2%, transparent)" }}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-semibold capitalize" style={{ color: "var(--foreground)" }}>{leave.leaveType} Leave</span>
                   </div>
-                ))}
-              </div>
-            </>
+                  <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                    {new Date(leave.startDate).toLocaleDateString()} to {new Date(leave.endDate).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

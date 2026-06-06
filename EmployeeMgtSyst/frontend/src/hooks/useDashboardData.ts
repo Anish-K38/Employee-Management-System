@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, getStoredUser } from "./useAuth";
+import { useToast } from "./useToast";
 
 export interface DashboardData {
   kpis: any;
@@ -12,6 +13,7 @@ export function useDashboardData() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const user = getStoredUser();
 
   useEffect(() => {
@@ -35,7 +37,9 @@ export function useDashboardData() {
         });
       } catch (err: any) {
         console.error("Failed to fetch dashboard data", err);
-        setError(err.response?.data?.message || "Failed to load dashboard data.");
+        const errMsg = err.response?.data?.message || "Failed to load dashboard data.";
+        setError(errMsg);
+        toast(errMsg, "error");
       } finally {
         setLoading(false);
       }

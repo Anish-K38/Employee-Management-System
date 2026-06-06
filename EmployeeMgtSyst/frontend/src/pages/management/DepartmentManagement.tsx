@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../hooks/useAuth";
+import { useToast } from "../../hooks/useToast";
 import { Building2, Plus, Edit2, Trash2 } from "lucide-react";
 
 interface Department {
@@ -12,7 +13,7 @@ interface Department {
 export default function DepartmentManagement() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,12 +23,14 @@ export default function DepartmentManagement() {
   const [description, setDescription] = useState("");
   const [submitError, setSubmitError] = useState("");
 
+  const [deptToDelete, setDeptToDelete] = useState<{ id: string; name: string } | null>(null);
+
   const fetchDepartments = async () => {
     try {
       const { data } = await api.get("/departments");
       setDepartments(data);
     } catch (err: any) {
-      setError("Failed to load departments");
+      toast("Failed to load departments", "error");
     } finally {
       setLoading(false);
     }
@@ -71,23 +74,29 @@ export default function DepartmentManagement() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete the ${name} department?`)) return;
+  const confirmDelete = (id: string, name: string) => {
+    setDeptToDelete({ id, name });
+  };
+
+  const handleDelete = async () => {
+    if (!deptToDelete) return;
 
     try {
-      await api.delete(`/departments/${id}`);
-      fetchDepartments();
+      await api.delete(`/departments/${deptToDelete.id}`);
+      setDepartments((prev) => prev.filter((d) => d._id !== deptToDelete.id));
+      toast("Department deleted successfully", "success");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to delete department");
+      toast(err.response?.data?.message || "Failed to delete department", "error");
+    } finally {
+      setDeptToDelete(null);
     }
   };
 
   if (loading) return <div className="p-8 text-center" style={{ color: "var(--text-muted)" }}>Loading departments...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>Department Management</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Manage company departments and teams</p>
@@ -133,7 +142,7 @@ export default function DepartmentManagement() {
                     <button onClick={() => openEditModal(dept)} className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors" style={{ color: "var(--text-secondary)" }}>
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => handleDelete(dept._id, dept.name)} className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-red-500 hover:text-red-600">
+                    <button onClick={() => confirmDelete(dept._id, dept.name)} className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-red-500 hover:text-red-600">
                       <Trash2 size={16} />
                     </button>
                   </td>
@@ -150,7 +159,7 @@ export default function DepartmentManagement() {
             <h2 className="text-xl font-bold mb-4" style={{ color: "var(--foreground)" }}>
               {isEditing ? "Edit Department" : "Create Department"}
             </h2>
-            {submitError && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">{submitError}</div>}
+            {submitError && <div className="mb-4 text-center text-sm font-medium" style={{ color: "var(--destructive)" }}>{submitError}</div>}
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -194,6 +203,39 @@ export default function DepartmentManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ──────────────────────────────── */}
+      {deptToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="glass-card rounded-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in-95 duration-200 text-center">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-500/10 text-red-500">
+              <Trash2 size={24} />
+            </div>
+            <h2 className="text-lg font-bold mb-2" style={{ color: "var(--foreground)" }}>
+              Delete Department
+            </h2>
+            <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+              Are you sure you want to delete <strong>{deptToDelete.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => setDeptToDelete(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-6 py-2 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 bg-red-500"
+              >
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../hooks/useToast";
 import { Users, Plus, Edit2, Trash2, KeyRound, Building2, UserCheck, Search } from "lucide-react";
 
 interface SupervisorItem {
@@ -25,6 +26,7 @@ interface Department {
 
 export default function UserManagement() {
   const { user: authUser } = useAuth();
+  const { toast } = useToast();
   const isSuperAdmin = authUser?.role === "super_admin";
   const isAdmin = authUser?.role === "admin";
 
@@ -47,6 +49,8 @@ export default function UserManagement() {
   const [submitError, setSubmitError] = useState("");
   const [tempPassword, setTempPassword] = useState("");
 
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
+
   // ── Data fetching ──────────────────────────────────────────
   const fetchData = async () => {
     try {
@@ -57,7 +61,7 @@ export default function UserManagement() {
       setUsers(usersRes.data);
       setDepartments(deptsRes.data);
     } catch (err: any) {
-      console.error(err);
+      toast("Failed to load users or departments", "error");
     } finally {
       setLoading(false);
     }
@@ -137,25 +141,34 @@ export default function UserManagement() {
         await api.put(`/users/${currentId}`, payload);
         setIsModalOpen(false);
         fetchData();
+        toast("User updated successfully", "success");
       } else {
         const res = await api.post("/users", payload);
         setTempPassword(res.data.temporaryPassword);
         fetchData();
+        toast("User created successfully", "success");
         // Keep modal open so admin can see and copy the temp password
       }
     } catch (err: any) {
-      setSubmitError(err.response?.data?.message || "Failed to save user");
+      toast(err.response?.data?.message || "Failed to save user", "error");
     }
   };
 
   // ── Delete ─────────────────────────────────────────────────
-  const handleDelete = async (id: string, userName: string) => {
-    if (!window.confirm(`Are you sure you want to delete ${userName}?`)) return;
+  const confirmDelete = (id: string, name: string) => {
+    setUserToDelete({ id, name });
+  };
+
+  const handleDelete = async () => {
+    if (!userToDelete) return;
     try {
-      await api.delete(`/users/${id}`);
+      await api.delete(`/users/${userToDelete.id}`);
       fetchData();
+      toast(`User ${userToDelete.name} deleted successfully`, "success");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to delete user");
+      toast(err.response?.data?.message || "Failed to delete user", "error");
+    } finally {
+      setUserToDelete(null);
     }
   };
 
@@ -213,21 +226,21 @@ export default function UserManagement() {
             {isAdmin ? "Manage users in your department" : "Manage all company users"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
             <input
               type="text"
               placeholder="Search users..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-xl border bg-transparent focus:outline-none focus:ring-2 text-sm w-64 transition-all focus:w-72"
+              className="pl-9 pr-4 py-2 rounded-xl border bg-transparent focus:outline-none focus:ring-2 text-sm w-full sm:w-64 transition-all focus:w-full sm:focus:w-72"
               style={{ borderColor: "var(--border)", color: "var(--foreground)", outlineColor: "var(--primary)" }}
             />
           </div>
           <button
             onClick={openCreateModal}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-white font-medium text-sm transition-opacity hover:opacity-90 shrink-0"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-white font-medium text-sm transition-opacity hover:opacity-90 shrink-0 w-full sm:w-auto"
             style={{ background: "var(--primary)" }}
           >
             <Plus size={16} /> Add User
@@ -313,7 +326,7 @@ export default function UserManagement() {
                     </button>
                     {u._id !== authUser?._id && (
                       <button
-                        onClick={() => handleDelete(u._id, u.name)}
+                        onClick={() => confirmDelete(u._id, u.name)}
                         className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-red-500 hover:text-red-600"
                         title="Delete user"
                       >
@@ -337,7 +350,7 @@ export default function UserManagement() {
             </h2>
 
             {submitError && (
-              <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">
+              <div className="mb-4 text-center text-sm font-medium" style={{ color: "var(--destructive)" }}>
                 {submitError}
               </div>
             )}
@@ -495,6 +508,39 @@ export default function UserManagement() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ──────────────────────────────── */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="glass-card rounded-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in-95 duration-200 text-center">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-500/10 text-red-500">
+              <Trash2 size={24} />
+            </div>
+            <h2 className="text-lg font-bold mb-2" style={{ color: "var(--foreground)" }}>
+              Delete User
+            </h2>
+            <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+              Are you sure you want to delete <strong>{userToDelete.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-6 py-2 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 bg-red-500"
+              >
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

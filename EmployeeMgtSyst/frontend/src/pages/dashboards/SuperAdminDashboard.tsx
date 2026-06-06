@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { KPICard } from "../../components/dashboard/KPICard";
+import LeaveBalancesWidget from "../../components/dashboard/LeaveBalancesWidget";
+import { OnLeaveModal } from "../../components/dashboard/OnLeaveModal";
 import { Users, Building, Activity, CalendarClock } from "lucide-react";
 import {
   BarChart,
@@ -13,12 +16,12 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { formatDistanceToNow } from "date-fns";
 
 const PIE_COLORS = ["#0088cc", "#00cc00", "#ff9900", "#ff4444", "#0006bc", "#8884d8"];
 
 export default function SuperAdminDashboard() {
   const { data, loading, error } = useDashboardData();
+  const [isOnLeaveModalOpen, setIsOnLeaveModalOpen] = useState(false);
 
   if (loading) {
     return (
@@ -32,9 +35,8 @@ export default function SuperAdminDashboard() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800">
-        <p className="font-medium">Failed to load dashboard</p>
-        <p className="text-sm mt-1">{error}</p>
+      <div className="flex items-center justify-center h-[50vh] text-sm" style={{ color: "var(--text-muted)" }}>
+        Error loading dashboard: {error}
       </div>
     );
   }
@@ -60,11 +62,12 @@ export default function SuperAdminDashboard() {
           colorTheme="primary"
         />
         <KPICard
-          title="Global Leave Rate"
-          value={`${data.kpis.globalLeaveRate}%`}
-          subtitle="Employees off today"
+          title="On Leave Today"
+          value={data.kpis.onLeaveToday}
+          subtitle={`${data.kpis.globalLeaveRate}% of workforce`}
           icon={<Activity size={20} />}
-          colorTheme="accent"
+          colorTheme={data.kpis.onLeaveToday > 0 ? "orange" : "accent"}
+          onClick={() => setIsOnLeaveModalOpen(true)}
         />
         <KPICard
           title="Pending Actions"
@@ -81,6 +84,9 @@ export default function SuperAdminDashboard() {
           colorTheme="primary"
         />
       </div>
+
+      {/* Leave Balances Widget */}
+      <LeaveBalancesWidget leaveBalances={data.kpis.leaveBalances} />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -141,37 +147,11 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* Activity Feed */}
-      <div className="glass-card rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>System Activity</h2>
-        </div>
-        
-        {data.activity.length === 0 ? (
-          <div className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
-            No recent activity
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {data.activity.map((item) => (
-              <div key={item._id} className="flex gap-4">
-                <div className="mt-1 relative">
-                  <div className="absolute top-8 bottom-[-16px] left-1/2 -translate-x-1/2 w-px" style={{ background: "var(--border)" }} />
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center z-10 relative" style={{ background: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
-                    <Activity size={14} />
-                  </div>
-                </div>
-                <div className="flex-1 pb-4">
-                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{item.message}</p>
-                  <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <OnLeaveModal 
+        isOpen={isOnLeaveModalOpen} 
+        onClose={() => setIsOnLeaveModalOpen(false)} 
+        employees={data.kpis.onLeaveEmployees || []} 
+      />
     </div>
   );
 }

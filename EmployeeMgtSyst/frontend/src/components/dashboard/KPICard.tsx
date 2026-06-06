@@ -6,6 +6,7 @@ interface KPICardProps {
   subtitle?: string;
   icon: ReactNode;
   colorTheme?: "primary" | "accent" | "orange" | "destructive";
+  onClick?: () => void;
 }
 
 export function KPICard({
@@ -14,6 +15,7 @@ export function KPICard({
   subtitle,
   icon,
   colorTheme = "primary",
+  onClick,
 }: KPICardProps) {
   // Map our themes to the CSS variables
   const getThemeColor = () => {
@@ -29,7 +31,10 @@ export function KPICard({
   const color = getThemeColor();
 
   return (
-    <div className="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:translate-y-[-2px] hover:shadow-xl">
+    <div 
+      className={`glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:translate-y-[-2px] hover:shadow-xl ${onClick ? "cursor-pointer" : ""}`}
+      onClick={onClick}
+    >
       {/* Background glow based on theme */}
       <div 
         className="absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-20 blur-2xl transition-opacity duration-300"

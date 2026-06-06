@@ -2,6 +2,67 @@ import type { Request, Response } from "express";
 import { Leave } from "../models/leave.js";
 import { User } from "../models/user.js";
 import { Department } from "../models/department.js";
+import { Notification } from "../models/notification.js";
+
+// ─────────────────────────────────────────────────────────────
+// Helper: count working days (Monday-Saturday) between two dates (inclusive)
+// ─────────────────────────────────────────────────────────────
+const countWorkingDays = (start: Date, end: Date): number => {
+  let count = 0;
+  const current = new Date(start);
+  current.setHours(0, 0, 0, 0);
+  const endDate = new Date(end);
+  endDate.setHours(0, 0, 0, 0);
+  while (current <= endDate) {
+    const day = current.getDay();
+    if (day !== 0) count++; // Skip only Sunday (0)
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+};
+
+// ─────────────────────────────────────────────────────────────
+// Helper: deduct leave balance from user when leave is approved
+// ─────────────────────────────────────────────────────────────
+const deductLeaveBalance = async (employeeId: string, leaveType: string, startDate: Date, endDate: Date): Promise<void> => {
+  const days = countWorkingDays(startDate, endDate);
+  if (days <= 0) return;
+
+  // Map leaveType to the User.leaveBalance field key
+  const balanceFieldMap: Record<string, string> = {
+    annual: "leaveBalance.annual",
+    sick: "leaveBalance.sick",
+    casual: "leaveBalance.casual",
+    maternity: "leaveBalance.maternity",
+  };
+
+  const field = balanceFieldMap[leaveType];
+  if (!field) return; // paternity, unpaid — no balance to deduct
+
+  await User.findByIdAndUpdate(employeeId, {
+    $inc: { [field]: -days },
+  });
+};
+
+// ─────────────────────────────────────────────────────────────
+// Helper: create a final notification with remarks when leave is finalized
+// ─────────────────────────────────────────────────────────────
+const createFinalNotification = async (leave: any, status: "approved" | "rejected") => {
+  let remarks = [];
+  if (leave.supervisorRemark) remarks.push(`Supervisor: ${leave.supervisorRemark}`);
+  if (leave.adminRemark) remarks.push(`Admin: ${leave.adminRemark}`);
+  if (leave.superAdminRemark) remarks.push(`Super Admin: ${leave.superAdminRemark}`);
+  
+  const remarksText = remarks.length > 0 ? ` (Remarks: ${remarks.join(" | ")})` : "";
+  const msg = `Your ${leave.leaveType} leave from ${leave.startDate.toISOString().split("T")[0]} to ${leave.endDate.toISOString().split("T")[0]} has been ${status}${remarksText}.`;
+  
+  await Notification.create({
+    userId: leave.employeeId,
+    message: msg,
+    type: status === "approved" ? "leave_approved" : "leave_rejected",
+    relatedLeaveId: leave._id
+  });
+};
 
 // ─────────────────────────────────────────────────────────────
 // Helper: populate all refs on a leave document
@@ -87,6 +148,11 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       adminApproval,
       superAdminApproval,
     });
+
+    // If super_admin auto-approved, deduct balance immediately
+    if (status === "approved") {
+      await deductLeaveBalance(req.user!.id, leaveType, start, end);
+    }
 
     const populated = await populateLeave(Leave.findById(leave._id));
 
@@ -270,7 +336,7 @@ export const supervisorAction = async (req: Request, res: Response): Promise<voi
     }
 
     // Prevent self-approval
-    if (leave.employeeId._id.toString() === req.user!.id) {
+    if ((leave.employeeId as any)._id.toString() === req.user!.id) {
       res.status(403).json({ message: "You cannot approve your own leave." });
       return;
     }
@@ -304,8 +370,13 @@ export const supervisorAction = async (req: Request, res: Response): Promise<voi
     // Short-circuit: if rejected, mark overall status as rejected immediately
     if (action === "rejected") {
       leave.status = "rejected";
+      await createFinalNotification(leave, "rejected");
     } else if (leave.adminApproval === "not_required" && leave.superAdminApproval === "not_required") {
       leave.status = "approved"; // If no further stages needed (rare edge case)
+      // Deduct balance on final approval
+      const empId = (leave.employeeId as any)._id ? (leave.employeeId as any)._id.toString() : leave.employeeId.toString();
+      await deductLeaveBalance(empId, leave.leaveType, leave.startDate, leave.endDate);
+      await createFinalNotification(leave, "approved");
     }
 
     await leave.save();
@@ -392,8 +463,12 @@ export const adminAction = async (req: Request, res: Response): Promise<void> =>
     // Finalise overall status if no Stage 3 is required
     if (action === "rejected") {
       leave.status = "rejected";
+      await createFinalNotification(leave, "rejected");
     } else if (leave.superAdminApproval === "not_required") {
       leave.status = "approved";
+      // Deduct balance on final approval
+      await deductLeaveBalance(leave.employeeId.toString(), leave.leaveType, leave.startDate, leave.endDate);
+      await createFinalNotification(leave, "approved");
     }
 
     await leave.save();
@@ -463,6 +538,14 @@ export const superAdminAction = async (req: Request, res: Response): Promise<voi
 
     // Finalise overall status
     leave.status = action === "approved" ? "approved" : "rejected";
+
+    // Deduct balance on final approval
+    if (action === "approved") {
+      await deductLeaveBalance(leave.employeeId.toString(), leave.leaveType, leave.startDate, leave.endDate);
+      await createFinalNotification(leave, "approved");
+    } else {
+      await createFinalNotification(leave, "rejected");
+    }
 
     await leave.save();
 

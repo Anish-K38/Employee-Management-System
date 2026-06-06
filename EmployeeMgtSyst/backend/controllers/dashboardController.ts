@@ -17,16 +17,42 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
     if (role === "employee") {
       const user = await User.findById(id).select("leaveBalance");
       
-      const [totalTaken, pendingRequests] = await Promise.all([
-        Leave.countDocuments({ employeeId: id, status: "approved", startDate: { $gte: new Date(now.getFullYear(), 0, 1) } }),
-        Leave.countDocuments({ employeeId: id, status: "pending" })
+      // Count approved leaves by type for this year
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const [pendingRequests, approvedLeaves] = await Promise.all([
+        Leave.countDocuments({ employeeId: id, status: "pending" }),
+        Leave.find({ employeeId: id, status: "approved", startDate: { $gte: yearStart } }).select("leaveType startDate endDate").lean()
       ]);
 
+      // Count used leaves per type
+      const usedByType: Record<string, number> = {};
+      for (const l of approvedLeaves) {
+        usedByType[l.leaveType] = (usedByType[l.leaveType] || 0) + 1;
+      }
+
+      const totalTaken = approvedLeaves.length;
+
+      const lb = user?.leaveBalance || { annual: 0, sick: 0, casual: 0, maternity: 0 };
+
       res.json({
-        annualBalance: user?.leaveBalance?.annual || 0,
-        sickBalance: user?.leaveBalance?.sick || 0,
+        annualBalance: lb.annual,
+        sickBalance: lb.sick,
+        casualBalance: lb.casual,
+        maternityBalance: lb.maternity,
         pendingRequests,
-        totalTaken
+        totalTaken,
+        recentLeaves: approvedLeaves.map(l => ({
+          _id: l._id,
+          leaveType: l.leaveType,
+          startDate: l.startDate,
+          endDate: l.endDate
+        })),
+        leaveBalances: {
+          annual:    { remaining: lb.annual,    total: lb.annual    + (usedByType["annual"] || 0) },
+          sick:      { remaining: lb.sick,      total: lb.sick      + (usedByType["sick"] || 0) },
+          casual:    { remaining: lb.casual,    total: lb.casual    + (usedByType["casual"] || 0) },
+          maternity: { remaining: lb.maternity, total: lb.maternity + (usedByType["maternity"] || 0) },
+        }
       });
       return;
     }
@@ -35,25 +61,45 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
       const reportees = await User.find({ supervisorId: id }).select("_id");
       const reporteeIds = reportees.map((u) => u._id);
 
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const nextWeek = new Date(today);
-      nextWeek.setDate(nextWeek.getDate() + 7);
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
+      const nextWeekStart = new Date(todayStart);
+      nextWeekStart.setDate(nextWeekStart.getDate() + 7);
 
-      const [onLeaveToday, pendingReview, upcomingLeaves] = await Promise.all([
-        Leave.countDocuments({ employeeId: { $in: reporteeIds }, status: "approved", startDate: { $lte: today }, endDate: { $gte: today } }),
+      const [onLeaveTodayLeaves, pendingReview, upcomingLeaves] = await Promise.all([
+        Leave.find({ employeeId: { $in: reporteeIds }, status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "firstName lastName email avatar").lean(),
         Leave.countDocuments({ employeeId: { $in: reporteeIds }, supervisorApproval: "pending", status: "pending" }),
-        Leave.countDocuments({ employeeId: { $in: reporteeIds }, status: "approved", startDate: { $gt: today, $lte: nextWeek } })
+        Leave.countDocuments({ employeeId: { $in: reporteeIds }, status: "approved", startDate: { $gt: todayStart, $lte: nextWeekStart } })
       ]);
+      const onLeaveToday = onLeaveTodayLeaves.length;
+
+      // Also fetch supervisor's own leave balance
+      const user = await User.findById(id).select("leaveBalance");
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const approvedLeaves = await Leave.find({ employeeId: id, status: "approved", startDate: { $gte: yearStart } }).select("leaveType").lean();
+      const usedByType: Record<string, number> = {};
+      for (const l of approvedLeaves) {
+        usedByType[l.leaveType] = (usedByType[l.leaveType] || 0) + 1;
+      }
+      const lb = user?.leaveBalance || { annual: 0, sick: 0, casual: 0, maternity: 0 };
 
       res.json({
         teamMembers: reporteeIds.length,
         onLeaveToday,
+        onLeaveEmployees: onLeaveTodayLeaves.map((l: any) => ({
+          ...l.employeeId,
+          leaveType: l.leaveType,
+          startDate: l.startDate,
+          endDate: l.endDate
+        })),
         pendingReview,
-        upcomingLeaves
+        upcomingLeaves,
+        leaveBalances: {
+          annual:    { remaining: lb.annual,    total: lb.annual    + (usedByType["annual"] || 0) },
+          sick:      { remaining: lb.sick,      total: lb.sick      + (usedByType["sick"] || 0) },
+          casual:    { remaining: lb.casual,    total: lb.casual    + (usedByType["casual"] || 0) },
+          maternity: { remaining: lb.maternity, total: lb.maternity + (usedByType["maternity"] || 0) },
+        }
       });
       return;
     }
@@ -68,46 +114,93 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
       const deptUsers = await User.find({ departmentId: actor.departmentId, role: { $in: ["employee", "supervisor"] } }).select("_id");
       const deptUserIds = deptUsers.map((u) => u._id);
 
-      const today = new Date();
-      today.setHours(0,0,0,0);
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
 
-      const [onLeaveToday, pendingApprovals, rejectedThisMonth] = await Promise.all([
-        Leave.countDocuments({ employeeId: { $in: deptUserIds }, status: "approved", startDate: { $lte: today }, endDate: { $gte: today } }),
+      const [onLeaveTodayLeaves, pendingApprovals, rejectedThisMonth] = await Promise.all([
+        Leave.find({ employeeId: { $in: deptUserIds }, status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "firstName lastName email avatar").lean(),
         Leave.countDocuments({ employeeId: { $in: deptUserIds }, supervisorApproval: "approved", adminApproval: "pending" }),
         Leave.countDocuments({ employeeId: { $in: deptUserIds }, status: "rejected", updatedAt: { $gte: monthStart } })
       ]);
+      const onLeaveToday = onLeaveTodayLeaves.length;
+
+      // Also fetch admin's own leave balance
+      const user = await User.findById(id).select("leaveBalance");
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const approvedLeaves = await Leave.find({ employeeId: id, status: "approved", startDate: { $gte: yearStart } }).select("leaveType").lean();
+      const usedByType: Record<string, number> = {};
+      for (const l of approvedLeaves) {
+        usedByType[l.leaveType] = (usedByType[l.leaveType] || 0) + 1;
+      }
+      const lb = user?.leaveBalance || { annual: 0, sick: 0, casual: 0, maternity: 0 };
 
       res.json({
         departmentSize: deptUserIds.length,
         onLeaveToday,
+        onLeaveEmployees: onLeaveTodayLeaves.map((l: any) => ({
+          ...l.employeeId,
+          leaveType: l.leaveType,
+          startDate: l.startDate,
+          endDate: l.endDate
+        })),
         pendingApprovals,
-        rejectedThisMonth
+        rejectedThisMonth,
+        leaveBalances: {
+          annual:    { remaining: lb.annual,    total: lb.annual    + (usedByType["annual"] || 0) },
+          sick:      { remaining: lb.sick,      total: lb.sick      + (usedByType["sick"] || 0) },
+          casual:    { remaining: lb.casual,    total: lb.casual    + (usedByType["casual"] || 0) },
+          maternity: { remaining: lb.maternity, total: lb.maternity + (usedByType["maternity"] || 0) },
+        }
       });
       return;
     }
 
     if (role === "super_admin") {
-      const today = new Date();
-      today.setHours(0,0,0,0);
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
       
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-      const [totalWorkforce, onLeaveToday, pendingActions, totalDepartments] = await Promise.all([
+      const [totalWorkforce, onLeaveTodayLeaves, pendingActions, totalDepartments] = await Promise.all([
         User.countDocuments({ isActive: true }),
-        Leave.countDocuments({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today } }),
+        Leave.find({ status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "firstName lastName email avatar").lean(),
         Leave.countDocuments({ status: "pending", createdAt: { $lte: threeDaysAgo } }),
         User.distinct("departmentId").then(ids => ids.filter(id => id != null).length) // Hacky way to get dept count without Dept model access if not imported
       ]);
+      const onLeaveToday = onLeaveTodayLeaves.length;
       
       // Calculate global leave rate
       const globalLeaveRate = totalWorkforce > 0 ? ((onLeaveToday / totalWorkforce) * 100).toFixed(1) : 0;
 
+      // Also fetch super admin's own leave balance
+      const user = await User.findById(id).select("leaveBalance");
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const approvedLeaves = await Leave.find({ employeeId: id, status: "approved", startDate: { $gte: yearStart } }).select("leaveType").lean();
+      const usedByType: Record<string, number> = {};
+      for (const l of approvedLeaves) {
+        usedByType[l.leaveType] = (usedByType[l.leaveType] || 0) + 1;
+      }
+      const lb = user?.leaveBalance || { annual: 0, sick: 0, casual: 0, maternity: 0 };
+
       res.json({
         totalWorkforce,
         globalLeaveRate: Number(globalLeaveRate),
+        onLeaveToday,
+        onLeaveEmployees: onLeaveTodayLeaves.map((l: any) => ({
+          ...l.employeeId,
+          leaveType: l.leaveType,
+          startDate: l.startDate,
+          endDate: l.endDate
+        })),
         pendingActions,
-        departmentsConfigured: totalDepartments
+        departmentsConfigured: totalDepartments,
+        leaveBalances: {
+          annual:    { remaining: lb.annual,    total: lb.annual    + (usedByType["annual"] || 0) },
+          sick:      { remaining: lb.sick,      total: lb.sick      + (usedByType["sick"] || 0) },
+          casual:    { remaining: lb.casual,    total: lb.casual    + (usedByType["casual"] || 0) },
+          maternity: { remaining: lb.maternity, total: lb.maternity + (usedByType["maternity"] || 0) },
+        }
       });
       return;
     }

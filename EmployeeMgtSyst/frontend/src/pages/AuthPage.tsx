@@ -10,7 +10,7 @@ const validateEmail = (v: string) =>
 type Panel = "login" | "forgot";
 
 export default function AuthPage() {
-  const { login, loading, error, setError } = useAuth();
+  const { login, loading, setError } = useAuth();
 
   // Login form state
   const [email, setEmail] = useState("");
@@ -118,9 +118,7 @@ export default function AuthPage() {
         >
           LeaveFlow
         </h1>
-        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>
-          HR Management Portal
-        </p>
+
       </div>
 
       {/* ── Card ────────────────────────────────────────────────────────── */}
@@ -150,22 +148,6 @@ export default function AuthPage() {
           </div>
 
           <form onSubmit={handleSignIn} className="px-8 py-6 flex flex-col gap-5" noValidate>
-            {/* Global error */}
-            {error && (
-              <div
-                className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-                style={{
-                  background: "color-mix(in srgb, var(--destructive) 12%, transparent)",
-                  color: "var(--destructive)",
-                  border: "1px solid color-mix(in srgb, var(--destructive) 30%, transparent)",
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {error}
-              </div>
-            )}
 
             {/* Email */}
             <div className="flex flex-col gap-1.5">
