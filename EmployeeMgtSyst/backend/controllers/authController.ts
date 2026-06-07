@@ -95,12 +95,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 };
 
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Forgot password — stub (email delivery deferred)
-// @route   POST /api/auth/forgot-password
-// @access  Public
-// Body: { email }
-// ─────────────────────────────────────────────────────────────
+
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
@@ -110,10 +105,6 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // NOTE: We deliberately do not reveal whether the email exists (security best practice)
-    // TODO: When mail provider is configured, generate a reset token, store it,
-    //       and send a reset link to this email address.
-
     res.json({
       message: "If an account with that email exists, a password reset link has been sent.",
     });
@@ -122,12 +113,6 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   }
 };
 
-
-// ─────────────────────────────────────────────────────────────
-// @desc    Get own profile (auth check endpoint)
-// @route   GET /api/auth/me
-// @access  Any authenticated user
-// ─────────────────────────────────────────────────────────────
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user!.id)

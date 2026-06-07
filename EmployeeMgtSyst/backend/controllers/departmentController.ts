@@ -2,11 +2,6 @@ import type { Request, Response } from "express";
 import { Department } from "../models/department.js";
 import { User } from "../models/user.js";
 
-// ─────────────────────────────────────────────
-// @desc    Create a new department
-// @route   POST /api/departments
-// @access  super_admin
-// ─────────────────────────────────────────────
 export const createDepartment = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, description } = req.body;
@@ -33,11 +28,6 @@ export const createDepartment = async (req: Request, res: Response): Promise<voi
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Get all departments
-// @route   GET /api/departments
-// @access  super_admin, admin
-// ─────────────────────────────────────────────
 export const getAllDepartments = async (req: Request, res: Response): Promise<void> => {
   try {
     // Both super_admin and admin can fetch departments (admins need to see it for user creation)
@@ -48,11 +38,6 @@ export const getAllDepartments = async (req: Request, res: Response): Promise<vo
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Update a department
-// @route   PUT /api/departments/:id
-// @access  super_admin
-// ─────────────────────────────────────────────
 export const updateDepartment = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, description } = req.body;
@@ -85,11 +70,6 @@ export const updateDepartment = async (req: Request, res: Response): Promise<voi
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Delete a department
-// @route   DELETE /api/departments/:id
-// @access  super_admin
-// ─────────────────────────────────────────────
 export const deleteDepartment = async (req: Request, res: Response): Promise<void> => {
   try {
     const department = await Department.findById(req.params.id);

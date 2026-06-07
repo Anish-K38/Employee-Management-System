@@ -1,12 +1,9 @@
 import type { Request, Response } from "express";
 import { Leave } from "../models/leave.js";
 import { User } from "../models/user.js";
-import { Department } from "../models/department.js";
+// import { Department } from "../models/department.js";
 import { Notification } from "../models/notification.js";
 
-// ─────────────────────────────────────────────────────────────
-// Helper: count working days (Monday-Saturday) between two dates (inclusive)
-// ─────────────────────────────────────────────────────────────
 const countWorkingDays = (start: Date, end: Date): number => {
   let count = 0;
   const current = new Date(start);
@@ -21,9 +18,6 @@ const countWorkingDays = (start: Date, end: Date): number => {
   return count;
 };
 
-// ─────────────────────────────────────────────────────────────
-// Helper: deduct leave balance from user when leave is approved
-// ─────────────────────────────────────────────────────────────
 const deductLeaveBalance = async (employeeId: string, leaveType: string, startDate: Date, endDate: Date): Promise<void> => {
   const days = countWorkingDays(startDate, endDate);
   if (days <= 0) return;
@@ -37,16 +31,13 @@ const deductLeaveBalance = async (employeeId: string, leaveType: string, startDa
   };
 
   const field = balanceFieldMap[leaveType];
-  if (!field) return; // paternity, unpaid — no balance to deduct
+  if (!field) return; 
 
   await User.findByIdAndUpdate(employeeId, {
     $inc: { [field]: -days },
   });
 };
 
-// ─────────────────────────────────────────────────────────────
-// Helper: create a final notification with remarks when leave is finalized
-// ─────────────────────────────────────────────────────────────
 const createFinalNotification = async (leave: any, status: "approved" | "rejected") => {
   let remarks = [];
   if (leave.supervisorRemark) remarks.push(`Supervisor: ${leave.supervisorRemark}`);
@@ -64,10 +55,6 @@ const createFinalNotification = async (leave: any, status: "approved" | "rejecte
   });
 };
 
-// ─────────────────────────────────────────────────────────────
-// Helper: populate all refs on a leave document
-// Returns Promise<any> so callers can freely access populated fields
-// ─────────────────────────────────────────────────────────────
 const populateLeave = (query: any): Promise<any> =>
   query
     .populate("employeeId", "name email role departmentId")
@@ -77,9 +64,6 @@ const populateLeave = (query: any): Promise<any> =>
     .lean();
 
 
-// ─────────────────────────────────────────────────────────────
-// Helper: build a dept-scoped filter for admin/super_admin
-// ─────────────────────────────────────────────────────────────
 const buildAdminFilter = async (actorId: string): Promise<Record<string, any> | null> => {
   const admin = await User.findById(actorId).select("departmentId");
   if (!admin?.departmentId) return null;
@@ -91,11 +75,6 @@ const buildAdminFilter = async (actorId: string): Promise<Record<string, any> | 
   return { employeeId: { $in: deptUserIds } };
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Apply for leave
-// @route   POST /api/leaves
-// @access  Any authenticated user (typically employee)
-// ─────────────────────────────────────────────────────────────
 export const applyLeave = async (req: Request, res: Response): Promise<void> => {
   try {
     const { leaveType, startDate, endDate, reason } = req.body;
@@ -162,11 +141,6 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Get own leave history
-// @route   GET /api/leaves/my
-// @access  Any authenticated user
-// ─────────────────────────────────────────────────────────────
 export const getMyLeaves = async (req: Request, res: Response): Promise<void> => {
   try {
     const leaves = await populateLeave(
@@ -179,14 +153,6 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Get all leaves (scoped by role)
-// @route   GET /api/leaves
-// @access  supervisor | admin | super_admin
-//   supervisor  → only employees who report to them (supervisorId = actor._id)
-//   admin       → all employees in their department
-//   super_admin → everything
-// ─────────────────────────────────────────────────────────────
 export const getAllLeaves = async (req: Request, res: Response): Promise<void> => {
   try {
     const { role, id } = req.user!;
@@ -217,11 +183,6 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Get a single leave by ID (scoped)
-// @route   GET /api/leaves/:id
-// @access  supervisor | admin | super_admin  (or owner)
-// ─────────────────────────────────────────────────────────────
 export const getLeaveById = async (req: Request, res: Response): Promise<void> => {
   try {
     const leave = await populateLeave(Leave.findById(req.params.id));
@@ -275,11 +236,6 @@ export const getLeaveById = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Cancel own leave (only while pending)
-// @route   PATCH /api/leaves/:id/cancel
-// @access  Leave owner only
-// ─────────────────────────────────────────────────────────────
 export const cancelLeave = async (req: Request, res: Response): Promise<void> => {
   try {
     const leave = await Leave.findById(req.params.id);
@@ -311,12 +267,6 @@ export const cancelLeave = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Supervisor approves or rejects a leave (Stage 1)
-// @route   PATCH /api/leaves/:id/supervisor-action
-// @access  supervisor only
-// Body: { action: "approved" | "rejected", remark?: string }
-// ─────────────────────────────────────────────────────────────
 export const supervisorAction = async (req: Request, res: Response): Promise<void> => {
   try {
     const { action, remark } = req.body;
@@ -388,12 +338,6 @@ export const supervisorAction = async (req: Request, res: Response): Promise<voi
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Admin approves or rejects a leave (Stage 2)
-// @route   PATCH /api/leaves/:id/admin-action
-// @access  admin | super_admin
-// Body: { action: "approved" | "rejected", remark?: string }
-// ─────────────────────────────────────────────────────────────
 export const adminAction = async (req: Request, res: Response): Promise<void> => {
   try {
     const { action, remark } = req.body;
@@ -480,12 +424,6 @@ export const adminAction = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Super Admin approves or rejects a leave (Stage 3)
-// @route   PATCH /api/leaves/:id/superadmin-action
-// @access  super_admin
-// Body: { action: "approved" | "rejected", remark?: string }
-// ─────────────────────────────────────────────────────────────
 export const superAdminAction = async (req: Request, res: Response): Promise<void> => {
   try {
     const { action, remark } = req.body;

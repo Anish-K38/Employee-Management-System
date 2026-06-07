@@ -10,11 +10,11 @@ export interface IUser extends mongoose.Document {
   createdBy?: mongoose.Types.ObjectId;
 
   // Onboarding / security flags
-  mustChangePassword: boolean;      // true when created by an admin; cleared on first password change
-  passwordChangedAt?: Date;         // timestamp of last password change
-  isActive: boolean;                // soft-disable without deleting the account
+  mustChangePassword: boolean;
+  passwordChangedAt?: Date;
+  isActive: boolean;
 
-  // Leave & HR tracking
+
   leaveBalance: {
     annual: number;
     sick: number;

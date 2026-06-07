@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 export interface INotification extends mongoose.Document {
-  userId: mongoose.Types.ObjectId | null; // null means global broadcast to super_admins
+  userId: mongoose.Types.ObjectId | null;
   message: string;
   type: "leave_approved" | "leave_rejected" | "leave_requested" | "system_alert";
   isRead: boolean;

@@ -3,11 +3,7 @@ import { Leave } from "../models/leave.js";
 import { User } from "../models/user.js";
 import { Notification } from "../models/notification.js";
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Get KPI stats for the logged-in user (role-aware)
-// @route   GET /api/dashboard/kpis
-// @access  Any authenticated user
-// ─────────────────────────────────────────────────────────────
+
 export const getKPIs = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, role } = req.user!;
@@ -211,11 +207,7 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Get monthly leave trends (bar chart)
-// @route   GET /api/dashboard/trends
-// @access  Any authenticated user
-// ─────────────────────────────────────────────────────────────
+
 export const getTrends = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, role } = req.user!;
@@ -257,11 +249,7 @@ export const getTrends = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Get leave type distribution (pie/doughnut chart)
-// @route   GET /api/dashboard/distribution
-// @access  Any authenticated user
-// ─────────────────────────────────────────────────────────────
+
 export const getDistribution = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, role } = req.user!;
@@ -316,11 +304,6 @@ export const getDistribution = async (req: Request, res: Response): Promise<void
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Get activity feed / recent notifications
-// @route   GET /api/dashboard/activity
-// @access  Any authenticated user
-// ─────────────────────────────────────────────────────────────
 export const getActivityFeed = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, role } = req.user!;

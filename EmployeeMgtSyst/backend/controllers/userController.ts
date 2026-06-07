@@ -1,12 +1,10 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../models/user.js";
-import { Department } from "../models/department.js"; // Import Department to register the schema in Mongoose
+
+// import { Department } from "../models/department.js"; 
 
 
-// ─────────────────────────────────────────────
-// Helper: build a scoped query filter for admins
-// ─────────────────────────────────────────────
 const buildScopeFilter = async (
   actorId: string,
   actorRole: string
@@ -26,11 +24,6 @@ const buildScopeFilter = async (
   return null; // employee → not allowed to list
 };
 
-// ─────────────────────────────────────────────
-// @desc    Get own profile
-// @route   GET /api/users/me
-// @access  Any authenticated user
-// ─────────────────────────────────────────────
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user!.id)
@@ -50,11 +43,6 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Create a new user
-// @route   POST /api/users
-// @access  super_admin | admin  (authorizeCreation middleware validates role matrix)
-// ─────────────────────────────────────────────
 // Helper: generate a random alphanumeric temporary password
 const generateTempPassword = (length = 10): string => {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -114,11 +102,6 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Get all users (scoped by role)
-// @route   GET /api/users
-// @access  super_admin (all) | admin (own dept)
-// ─────────────────────────────────────────────
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const filter = await buildScopeFilter(req.user!.id, req.user!.role);
@@ -141,12 +124,6 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Get supervisors scoped by department
-// @route   GET /api/users/supervisors?departmentId=xxx
-// @access  super_admin | admin
-// Returns only users with role=supervisor optionally filtered by department
-// ─────────────────────────────────────────────
 export const getSupervisorsByDept = async (req: Request, res: Response): Promise<void> => {
   try {
     const { departmentId } = req.query;
@@ -177,11 +154,6 @@ export const getSupervisorsByDept = async (req: Request, res: Response): Promise
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Get a single user by ID (scoped)
-// @route   GET /api/users/:id
-// @access  super_admin | admin (own dept)
-// ─────────────────────────────────────────────
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
   try {
     const filter = await buildScopeFilter(req.user!.id, req.user!.role);
@@ -208,11 +180,6 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Update a user (scoped)
-// @route   PUT /api/users/:id
-// @access  super_admin | admin (own dept)
-// ─────────────────────────────────────────────
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const filter = await buildScopeFilter(req.user!.id, req.user!.role);
@@ -266,11 +233,6 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// ─────────────────────────────────────────────
-// @desc    Delete a user (scoped)
-// @route   DELETE /api/users/:id
-// @access  super_admin | admin (own dept)
-// ─────────────────────────────────────────────
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
     // Prevent self-deletion
