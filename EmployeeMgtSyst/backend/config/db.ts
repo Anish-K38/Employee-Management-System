@@ -14,7 +14,7 @@ export const connectDB = async () => {
     isConnected = !!db.connections[0]?.readyState;
     console.log("MongoDB Connected");
   } catch (error) {
-    console.error(error);
-    process.exit(1);
+    console.error("MongoDB Connection Error:", error);
+    // Remove process.exit(1) to prevent crashing the serverless function wrapper
   }
 };
