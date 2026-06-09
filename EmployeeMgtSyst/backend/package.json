@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon --exec tsx server.ts --ext ts --ignore dist/",
     "build": "tsc",
-    "start": "tsx server.ts"
+    "start": "node dist/server.js"
   },
   "keywords": [
     "leave-management",

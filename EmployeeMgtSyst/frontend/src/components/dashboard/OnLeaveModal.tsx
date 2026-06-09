@@ -2,8 +2,7 @@ import { X, CalendarDays, User } from "lucide-react";
 
 interface OnLeaveEmployee {
   _id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
   leaveType: string;
   startDate: string;
@@ -34,7 +33,7 @@ export function OnLeaveModal({ isOpen, onClose, employees }: OnLeaveModalProps) 
           <div>
             <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>On Leave Today</h2>
             <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-              {employees.length} employee{employees.length !== 1 ? 's' : ''} out of office
+              {employees.length} Employee{employees.length !== 1 ? 's' : ''}
             </p>
           </div>
           <button 
@@ -68,7 +67,7 @@ export function OnLeaveModal({ isOpen, onClose, employees }: OnLeaveModalProps) 
                     </div>
                     <div>
                       <p className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>
-                        {emp.firstName} {emp.lastName}
+                        {emp.name || "Unknown"}
                       </p>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {emp.email}

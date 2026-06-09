@@ -15,18 +15,12 @@ import LeaveApprovals from "./pages/dashboards/LeaveApprovals";
 import UserManagement from "./pages/management/UserManagement";
 import DepartmentManagement from "./pages/management/DepartmentManagement";
 
-// ─────────────────────────────────────────────────────────────
-// Guard: redirect to /login if no token is present
-// ─────────────────────────────────────────────────────────────
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = getStoredToken();
   if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Guard: redirect away from login if already authenticated
-// ─────────────────────────────────────────────────────────────
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const token = getStoredToken();
   const user = getStoredUser();

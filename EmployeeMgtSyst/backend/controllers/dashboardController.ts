@@ -63,7 +63,7 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
       nextWeekStart.setDate(nextWeekStart.getDate() + 7);
 
       const [onLeaveTodayLeaves, pendingReview, upcomingLeaves] = await Promise.all([
-        Leave.find({ employeeId: { $in: reporteeIds }, status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "firstName lastName email avatar").lean(),
+        Leave.find({ employeeId: { $in: reporteeIds }, status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "name email avatar").lean(),
         Leave.countDocuments({ employeeId: { $in: reporteeIds }, supervisorApproval: "pending", status: "pending" }),
         Leave.countDocuments({ employeeId: { $in: reporteeIds }, status: "approved", startDate: { $gt: todayStart, $lte: nextWeekStart } })
       ]);
@@ -114,7 +114,7 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
       const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
 
       const [onLeaveTodayLeaves, pendingApprovals, rejectedThisMonth] = await Promise.all([
-        Leave.find({ employeeId: { $in: deptUserIds }, status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "firstName lastName email avatar").lean(),
+        Leave.find({ employeeId: { $in: deptUserIds }, status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "name email avatar").lean(),
         Leave.countDocuments({ employeeId: { $in: deptUserIds }, supervisorApproval: "approved", adminApproval: "pending" }),
         Leave.countDocuments({ employeeId: { $in: deptUserIds }, status: "rejected", updatedAt: { $gte: monthStart } })
       ]);
@@ -160,7 +160,7 @@ export const getKPIs = async (req: Request, res: Response): Promise<void> => {
 
       const [totalWorkforce, onLeaveTodayLeaves, pendingActions, totalDepartments] = await Promise.all([
         User.countDocuments({ isActive: true }),
-        Leave.find({ status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "firstName lastName email avatar").lean(),
+        Leave.find({ status: "approved", startDate: { $lte: todayStart }, endDate: { $gte: todayStart } }).populate("employeeId", "name email avatar").lean(),
         Leave.countDocuments({ status: "pending", createdAt: { $lte: threeDaysAgo } }),
         User.distinct("departmentId").then(ids => ids.filter(id => id != null).length) // Hacky way to get dept count without Dept model access if not imported
       ]);
